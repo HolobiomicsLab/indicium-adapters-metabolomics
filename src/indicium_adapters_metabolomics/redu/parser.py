@@ -1,47 +1,64 @@
-"""ReDU `/filename` parser — per-file sample-metadata → asb:Claim projection.
+"""ReDU per-MSV metadata → asb:Claim projection.
 
-Two entry points:
+Backend: GitHub-hosted snapshot at
+`Wang-Bioinformatics-Lab/ReDU_metadata/main/metadata/<MSV>.tsv`.
 
-* `redu_lookup(filename, *, session=None, cache_dir=...)` — HTTP GET against
-  the live ReDU endpoint with a content-addressed on-disk cache. Returns the
-  decoded JSON dict, or None on 404 / 5xx / network failure. Caller decides
-  whether to retry.
-* `redu_to_claims(filename, study_id, *, source_doi=None, sample_info=None)` —
-  convenience wrapper that calls `redu_lookup` (or accepts a pre-fetched
-  `sample_info` dict for offline tests) and projects the response through
-  `redu_sample_to_claims`.
-* `redu_sample_to_claims(sample_info, subject, *, source_doi=None)` — pure
-  projection from sample dict → list[Claim]. No I/O. Used directly when the
-  caller already has ReDU JSON from a bulk dump.
+We use the GH-hosted TSVs rather than the live `redu.ucsd.edu/filename`
+endpoint because:
 
-Field mapping (closes audit-2 finding 6e tier-1):
+* The live ReDU endpoint was returning 503 at the time of writing — fragile.
+* GH-hosted TSVs are versioned, mirrored, always up, and per-dataset (one
+  file per MassIVE accession), so a single fetch caches metadata for every
+  scan in a study — the lookup-per-file pattern collapses to one HTTP call
+  per MSV.
+* The schema is exactly what `redu_sample_to_claims` was already built for
+  (MassiveID, filename, SampleType, SampleTypeSub1, NCBITaxonomy,
+  UBERONBodyPartName, BiologicalSex, AgeInYears, DOIDCommonName,
+  HealthStatus). PrUL-prefixed CURIE forms are normalised in the helper.
 
-| ReDU field                       | Qualifier              | Object form              |
+Public surface:
+    redu_lookup(filename_or_path, *, session=None, cache_dir=...) -> dict | None
+        Returns the per-file metadata row from the GH TSV, or None.
+    redu_to_claims(filename, study_id, *, source_doi=None, sample_info=None)
+                                                              -> list[Claim]
+    redu_sample_to_claims(sample_info, subject, *, source_doi=None)
+        Pure projection — no I/O. Used directly when the caller already
+        has a row dict.
+
+The `redu_sample_to_claims` projection maps:
+
+| Source field                     | Qualifier              | Object form              |
 |----------------------------------|------------------------|--------------------------|
-| NCBITaxonomy                     | found_in_organism      | NCBITaxon:<id> CURIE     |
-| UBERONBodyPartName               | acquired_from_matrix   | UBERON:<id> CURIE        |
-| SampleType / SampleTypeSub1      | acquired_from_matrix   | literal (free-text)      |
+| NCBITaxonomy (e.g. "9606|Homo")  | found_in_organism      | NCBITaxon:<id> CURIE     |
+| UBERONBodyPartName               | acquired_from_matrix   | literal (UBERON CURIE if present) |
+| SampleType / SampleTypeSub1      | acquired_from_matrix   | literal (fallback)       |
 | DOIDCommonName                   | is_biomarker_for       | DOID:<id> CURIE          |
 | MassSpectrometer                 | analyzed_with          | literal                  |
-| IonizationSourceAndPolarity      | acquired_in_mode       | literal (e.g. "positive")|
+| IonizationSourceAndPolarity      | acquired_in_mode       | literal                  |
 | ChromatographyAndPhase           | chromatographed_on     | literal                  |
 
-ReDU sometimes ships pre-prefixed ontology IDs (e.g. `NCBITaxon:9606`) and
-sometimes bare IDs (e.g. `9606`). The helpers normalise either form.
+The TSV schema only carries the first three groups. The MS-operational
+columns (MassSpectrometer, etc.) come from the GNPS2 datasetcache datasette
+which lives in `indicium_adapters_metabolomics.gnps.datasetcache` — the
+same projection helper handles either source by tolerantly `.get()`-ing
+every field.
 """
 from __future__ import annotations
 
-import hashlib
-import json
+import csv
+import io
 import re
 from pathlib import Path
 from typing import Any
 
 import requests
 
-# The live endpoint shape the user supplied:
-#   GET https://redu.ucsd.edu/filename?query=f.<MSV>/<path>/<file>.mzML
-REDU_URL = "https://redu.ucsd.edu/filename"
+# Pin to `main` for now. If a tagged ReDU_metadata release ever appears,
+# bump this to a tag.
+REDU_GH_TSV_URL = (
+    "https://raw.githubusercontent.com/Wang-Bioinformatics-Lab/"
+    "ReDU_metadata/main/metadata/{msv}.tsv"
+)
 
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "indicium-adapters-metabolomics" / "redu"
 USER_AGENT = (
@@ -49,16 +66,88 @@ USER_AGENT = (
     "(https://github.com/HolobiomicsLab/indicium-adapters-metabolomics)"
 )
 
-# ReDU "ml.nofile" / "missing" sentinels we should treat as no-data.
+# Empty / sentinel cell values ReDU uses interchangeably with the empty string.
 _EMPTY_SENTINELS = frozenset({"", "n/a", "na", "none", "null", "missing",
                               "ml.nofile", "not collected", "not applicable"})
 
+# Matches `f.MSV000082048/...` or bare `MSV000082048/...` — extracts the MSV.
+_MSV_RE = re.compile(r"^(?:f\.)?(?P<msv>MSV\d{9})(?:/(?P<rest>.*))?$")
 
-def _cache_path(filename: str, cache_dir: Path) -> Path:
-    """Content-address by SHA-1 of the query string; the raw filename has
-    slashes that can't be filesystem keys."""
-    key = hashlib.sha1(filename.encode("utf-8")).hexdigest()
-    return cache_dir / f"{key}.json"
+
+def _msv_and_relpath(filename: str) -> tuple[str | None, str | None]:
+    """Split a ReDU-style file query into (MSV accession, file basename).
+
+    `f.MSV000082048/ccms_peak/Plate_28/30_84.mzML` → ('MSV000082048', '30_84.mzML')
+    `MSV000082048/30_84.mzML`                       → ('MSV000082048', '30_84.mzML')
+    `30_84.mzML` alone                              → (None, '30_84.mzML')
+    """
+    s = (filename or "").strip()
+    if not s:
+        return None, None
+    m = _MSV_RE.match(s)
+    if not m:
+        # Bare filename — caller didn't include the MSV. Can't look up.
+        return None, s.rsplit("/", 1)[-1] or None
+    rest = m.group("rest") or ""
+    return m.group("msv"), (rest.rsplit("/", 1)[-1] or None)
+
+
+def _cache_path(msv: str, cache_dir: Path) -> Path:
+    """Per-MSV TSV cache. Filenames are MSV-style so the cache dir is
+    inspectable by humans (unlike a hash)."""
+    return cache_dir / f"{msv}.tsv"
+
+
+def _fetch_msv_tsv(
+    msv: str,
+    *,
+    session: requests.Session | None,
+    cache_dir: Path | None,
+    timeout: float = 15.0,
+) -> str | None:
+    """Return raw TSV text for a single MSV accession. None on 404 / failure."""
+    cache_path: Path | None = None
+    if cache_dir is not None:
+        cache_path = _cache_path(msv, cache_dir)
+        if cache_path.exists():
+            try:
+                return cache_path.read_text(encoding="utf-8")
+            except OSError:
+                pass
+
+    sess = session or requests.Session()
+    sess.headers.setdefault("User-Agent", USER_AGENT)
+    try:
+        r = sess.get(REDU_GH_TSV_URL.format(msv=msv), timeout=timeout)
+    except requests.RequestException:
+        return None
+    if r.status_code != 200:
+        return None
+    text = r.text
+
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(text, encoding="utf-8")
+    return text
+
+
+def _row_for_filename(tsv_text: str, filename_basename: str | None) -> dict[str, Any] | None:
+    """Find the TSV row whose `filename` column matches `filename_basename`.
+
+    If `filename_basename` is None or no row matches, returns the first row
+    when there's only one row in the TSV (single-file datasets are common)
+    or None otherwise."""
+    reader = csv.DictReader(io.StringIO(tsv_text), delimiter="\t")
+    rows = list(reader)
+    if not rows:
+        return None
+    if filename_basename:
+        target = filename_basename.strip().lower()
+        for row in rows:
+            if (row.get("filename") or "").strip().lower() == target:
+                return row
+        return None
+    return rows[0] if len(rows) == 1 else None
 
 
 def redu_lookup(
@@ -68,50 +157,33 @@ def redu_lookup(
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
     timeout: float = 15.0,
 ) -> dict[str, Any] | None:
-    """Fetch the ReDU sample-metadata record for a MassIVE file path.
+    """Fetch the ReDU sample-metadata row for a MassIVE file path.
 
-    `filename` is the same string the user passes to ReDU's `?query=` param —
-    e.g. `f.MSV000082048/ccms_peak/Plate_28/30_84.mzML`.
+    `filename` follows the original ReDU `/filename?query=` shape —
+    `f.MSV000082048/ccms_peak/Plate_28/30_84.mzML` or any path whose first
+    segment is an MSV accession. The per-MSV TSV from
+    `Wang-Bioinformatics-Lab/ReDU_metadata` is fetched and cached on disk;
+    subsequent lookups in the same MSV are pure-Python (no network).
 
-    On success returns the decoded JSON dict. On 404 / 503 / network failure
-    returns None — caller decides whether to retry. Cached to disk by SHA-1
-    of the filename so re-runs are free; pass `cache_dir=None` to disable.
+    Returns None on 404 (MSV not in the metadata snapshot), network
+    failure, or no matching filename row in the TSV.
     """
-    if not filename or not filename.strip():
+    msv, basename = _msv_and_relpath(filename)
+    if not msv:
         return None
-
-    cache_path: Path | None = None
-    if cache_dir is not None:
-        cache_path = _cache_path(filename, Path(cache_dir))
-        if cache_path.exists():
-            try:
-                return json.loads(cache_path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                pass  # corrupt cache; fall through to refetch
-
-    sess = session or requests.Session()
-    sess.headers.setdefault("User-Agent", USER_AGENT)
-    try:
-        r = sess.get(REDU_URL, params={"query": filename}, timeout=timeout)
-    except requests.RequestException:
+    tsv_text = _fetch_msv_tsv(
+        msv,
+        session=session,
+        cache_dir=Path(cache_dir) if cache_dir is not None else None,
+        timeout=timeout,
+    )
+    if not tsv_text:
         return None
-    if r.status_code != 200:
-        return None
-    try:
-        data = r.json()
-    except ValueError:
-        return None
-    if not isinstance(data, dict):
-        return None
-
-    if cache_path is not None:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    return data
+    return _row_for_filename(tsv_text, basename)
 
 
 def _clean(v: Any) -> str | None:
-    """Strip whitespace and ReDU sentinel values. Returns None if empty."""
+    """Strip whitespace + ReDU sentinel values. Returns None when effectively empty."""
     if v is None:
         return None
     s = str(v).strip()
@@ -120,11 +192,16 @@ def _clean(v: Any) -> str | None:
     return s
 
 
-# Tolerant ontology-CURIE normaliser. ReDU sometimes ships pre-prefixed values
-# ("NCBITaxon:9606"), sometimes bare IDs ("9606"), sometimes purl IRIs
-# ("http://purl.obolibrary.org/obo/NCBITaxon_9606"). We accept all three and
-# emit `<PREFIX>:<id>`.
+# CURIE / PURL normaliser. ReDU's NCBITaxonomy column is typically
+# "<id>|<label>" (e.g. "9606|Homo sapiens"); we strip the label.
 _PURL_RE = re.compile(r".*?/(?P<prefix>[A-Za-z]+)_(?P<lid>[0-9A-Za-z]+)$")
+
+
+def _split_pipe_id(value: str | None) -> str | None:
+    """ReDU uses `<id>|<label>` notation for taxonomic IDs."""
+    if value is None:
+        return None
+    return value.split("|", 1)[0].strip() or None
 
 
 def _to_curie(value: str | None, prefix: str) -> str | None:
@@ -133,14 +210,11 @@ def _to_curie(value: str | None, prefix: str) -> str | None:
     s = value.strip()
     if not s:
         return None
-    # Already a CURIE?
     if ":" in s and not s.startswith(("http://", "https://")):
         return s
-    # PURL?
     m = _PURL_RE.match(s)
     if m:
         return f"{m.group('prefix')}:{m.group('lid')}"
-    # Bare local ID (digits or alphanumeric)
     if re.match(r"^[0-9A-Za-z]+$", s):
         return f"{prefix}:{s}"
     return None
@@ -150,13 +224,8 @@ def _claim(subject: str, qualifier: str, obj: str, *,
            ontology_term: str | None = None,
            source: str = "redu",
            source_doi: str | None = None) -> dict[str, Any]:
-    """Build a minimally-populated asb:Claim dict in the shape the adapter
-    family already round-trips. Evidence is stamped with the ReDU source so
-    Scriptorium/Perspicacite-AI can dedupe across origin paths."""
     c: dict[str, Any] = {
-        "subject": subject,
-        "qualifier": qualifier,
-        "object": obj,
+        "subject": subject, "qualifier": qualifier, "object": obj,
         "source": source,
     }
     if ontology_term is not None:
@@ -172,19 +241,21 @@ def redu_sample_to_claims(
     *,
     source_doi: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Project a single ReDU sample-metadata record to a list of claims.
+    """Project a single ReDU sample-metadata row to a list of claims.
 
-    Pure function; no I/O. `subject` is the asb:Claim subject for every
-    emitted claim (typically the study/capsule ID or paper DOI). Empty /
-    sentinel fields produce no claim. Order of emitted claims is stable
-    (organism → matrix → disease → ms → ionisation → chromatography) so
-    diffing two ReDU responses is straightforward.
+    Pure function. Empty / sentinel fields produce no claim. Order is stable
+    (organism → matrix → disease → ms → ionisation → chromatography). Works
+    transparently against both the GH-TSV row schema (MassiveID, NCBITaxonomy,
+    UBERONBodyPartName, …) and the live ReDU /filename JSON schema
+    (ATTRIBUTE_NCBITaxonomy, ATTRIBUTE_Curated_BodyPartOntologyName, …).
     """
     claims: list[dict[str, Any]] = []
 
     # 1. Organism (NCBITaxon)
-    taxon_id = _clean(sample_info.get("NCBITaxonomy")) \
-        or _clean(sample_info.get("ATTRIBUTE_NCBITaxonomy"))
+    taxon_id = (
+        _clean(_split_pipe_id(sample_info.get("NCBITaxonomy")))
+        or _clean(_split_pipe_id(sample_info.get("ATTRIBUTE_NCBITaxonomy")))
+    )
     if taxon_id:
         curie = _to_curie(taxon_id, "NCBITaxon")
         if curie:
@@ -205,7 +276,6 @@ def redu_sample_to_claims(
             claims.append(_claim(subject, "acquired_from_matrix", uberon,
                                  source_doi=source_doi))
     else:
-        # Fall back to ReDU's free-text SampleType / SampleTypeSub1.
         sample_type = _clean(sample_info.get("SampleTypeSub1")) \
             or _clean(sample_info.get("SampleType"))
         if sample_type:
@@ -219,11 +289,10 @@ def redu_sample_to_claims(
         or _clean(sample_info.get("ATTRIBUTE_DiseaseOntology"))
     if disease_name:
         curie = _to_curie(disease_id, "DOID") if disease_id else None
-        c = _claim(subject, "is_biomarker_for", disease_name,
-                   ontology_term=curie, source_doi=source_doi)
-        claims.append(c)
+        claims.append(_claim(subject, "is_biomarker_for", disease_name,
+                             ontology_term=curie, source_doi=source_doi))
 
-    # 4. Mass spectrometer
+    # 4. Mass spectrometer (NOT in GH TSV schema; lives in datasetcache)
     ms = _clean(sample_info.get("MassSpectrometer"))
     if ms:
         claims.append(_claim(subject, "analyzed_with", ms,
@@ -232,9 +301,6 @@ def redu_sample_to_claims(
     # 5. Ionisation source + polarity
     ion = _clean(sample_info.get("IonizationSourceAndPolarity"))
     if ion:
-        # Common ReDU forms: "ESI positive", "ESI negative", "MALDI positive".
-        # Project the polarity (positive/negative) to acquired_in_mode literal
-        # but pass the full string through to keep the source info recoverable.
         claims.append(_claim(subject, "acquired_in_mode", ion,
                              source_doi=source_doi))
 
@@ -256,11 +322,11 @@ def redu_to_claims(
     session: requests.Session | None = None,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
 ) -> list[dict[str, Any]]:
-    """High-level convenience: fetch ReDU for `filename` and project to claims.
+    """Fetch ReDU for `filename` and project to claims.
 
-    Pass `sample_info=<dict>` to skip the HTTP call (useful for offline tests
-    and for callers that already have ReDU JSON from a bulk dump). Otherwise
-    `redu_lookup` is called with the same cache_dir / session knobs."""
+    Pass `sample_info=<dict>` to skip the HTTP call (offline tests,
+    pre-fetched data). Otherwise `redu_lookup` is called with the same
+    cache_dir / session knobs."""
     if sample_info is None:
         sample_info = redu_lookup(filename, session=session, cache_dir=cache_dir)
     if not sample_info:

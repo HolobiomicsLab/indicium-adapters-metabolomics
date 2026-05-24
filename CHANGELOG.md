@@ -4,25 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [0.6.0] — 2026-05-24
 
-Lands three external-API integrations the user flagged after the v0.5.0
-audit-2 follow-up: ReDU per-file sample-metadata lookup and the two GNPS
-ProteoSAFe endpoints (`result_json.jsp` annotations view + ManageParameters
-XML). Each new submodule projects directly into existing adapter qualifier
-vocab — no new qualifiers needed.
+Lands four external-data integrations: a ReDU per-MSV metadata lookup, the
+two GNPS ProteoSAFe endpoints (`result_json.jsp` annotations + ManageParameters
+XML), and the GNPS2 datasetcache datasette for MS-operational metadata. Each
+new submodule projects directly into existing adapter qualifier vocab — no
+new qualifiers needed.
 
 ### Added
-- **`indicium_adapters_metabolomics.redu`** — projects ReDU's per-file
-  sample-metadata record into existing adapter qualifiers:
-  `found_in_organism` (EMI; NCBITaxon CURIE), `acquired_from_matrix`
-  (Metabolomics v0.5.0; UBERON CURIE or free-text SampleType fallback),
-  `is_biomarker_for` (Metabolomics; DOID CURIE), `analyzed_with`,
-  `acquired_in_mode`, `chromatographed_on` (Metabolomics v0.4.0).
-  Public surface: `redu_lookup(filename, *, session=None, cache_dir=...)`,
-  `redu_to_claims(filename, study_id, *, sample_info=None, …)`, and the pure
-  `redu_sample_to_claims(sample_info, subject, *, source_doi=None)`.
-  On-disk cache at `~/.cache/indicium-adapters-metabolomics/redu/<sha1>.json`.
-  Closes audit-2 finding 6e (matrix vocabulary) for files that have a known
-  MassIVE path — demotes the MiniLM matrix-fuzzy fallback to a tier-2.
+- **`indicium_adapters_metabolomics.redu`** — projects per-MSV biological
+  sample metadata to existing adapter qualifiers: `found_in_organism`
+  (NCBITaxon CURIE; `<id>|<label>` pipe form auto-stripped),
+  `acquired_from_matrix` (UBERON CURIE or free-text SampleType fallback),
+  `is_biomarker_for` (DOID CURIE), and (for the legacy ReDU `/filename` JSON
+  schema only) `analyzed_with`, `acquired_in_mode`, `chromatographed_on`.
+
+  **Backend: GitHub-raw TSVs at `Wang-Bioinformatics-Lab/ReDU_metadata/
+  main/metadata/<MSV>.tsv`.** Chose this over the live `redu.ucsd.edu/
+  filename` endpoint because the live endpoint was returning 503 at parse
+  time; the GH-hosted snapshot is versioned, mirrored, and per-dataset so
+  one fetch caches metadata for every scan in a study. Per-MSV TSV is
+  cached on disk under `~/.cache/indicium-adapters-metabolomics/redu/
+  <MSV>.tsv`; subsequent file-row lookups in the same MSV are pure-Python.
+
+  The projection helper `redu_sample_to_claims` tolerates **both** the GH-TSV
+  schema (MassiveID/filename/NCBITaxonomy/UBERONBodyPartName/…) and the
+  legacy `/filename` ATTRIBUTE_-prefixed schema, so a future live-endpoint
+  revival can be slotted in as a second backend without touching consumers.
+- **`indicium_adapters_metabolomics.gnps.datasetcache`** — new module hitting
+  `https://datasetcache.gnps2.org/datasette/database/uniquemri.json` for
+  MS-operational metadata that ReDU doesn't carry (auto-extracted from
+  spectra: MassAnalyzer, Ionization, instrument model/vendor, classification
+  e.g. DDA/DIA). Maps to `analyzed_with` (instrument model; vendor folded
+  into evidence), `uses_mass_analyzer` (v0.4.0 qualifier — first concrete
+  data source), `acquired_in_mode` (Ionization string), and a defensive
+  `acquired_from_matrix` only when `sample_type` is a real matrix word (not
+  operational tags like 'GNPS'/'MASSIVE-KCF'). Re-exported as
+  `datasetcache_to_claims` at package top-level. **Closes the original
+  ReDU-503 problem with a complementary data source** — the two together
+  give richer coverage than the ReDU `/filename` endpoint did on its own.
 - **`indicium_adapters_metabolomics.gnps`** — two parsers sharing infra:
   - `parse_gnps_annotations(blockdata, task_id)` / `fetch_gnps_annotations(task_id)`
     consume `result_json.jsp?view=view_all_annotations_DB`. Emits
@@ -41,13 +60,20 @@ vocab — no new qualifiers needed.
   `INDICIUM_LIVE_TESTS=1` so CI doesn't depend on the live endpoints.
 
 ### Tests
-- 225 passing on Py 3.13 at 95.18% coverage (was 175 at 99.36%).
-- New `tests/test_redu.py` (21 cases) + `tests/test_gnps.py` (29 cases).
-- Offline fixtures at `tests/fixtures/redu_sample_response.json`,
-  `gnps_annotations_response.json`, `gnps_parameters_response.xml`. The
-  GNPS XML fixture was captured verbatim from a live probe on 2026-05-24
-  against task `1ad7bc366aef45ce81d2dfcca0a9a5e7`; the annotations JSON
-  was trimmed from the same probe.
+- 261 passing on Py 3.13 at 95.53% coverage (was 175 at 99.36%).
+- New `tests/test_redu.py` (36 cases), `tests/test_gnps.py` (29 cases),
+  `tests/test_datasetcache.py` (20 cases).
+- Offline fixtures at:
+  - `tests/fixtures/redu_msv_metadata.tsv` — GH-TSV schema (primary path)
+  - `tests/fixtures/redu_sample_response.json` — legacy `/filename` JSON
+    (covers the ATTRIBUTE_-prefixed schema branch)
+  - `tests/fixtures/gnps_annotations_response.json` — trimmed from live
+    probe of task `1ad7bc366aef45ce81d2dfcca0a9a5e7`
+  - `tests/fixtures/gnps_parameters_response.xml` — verbatim from same probe
+  - `tests/fixtures/gnps2_datasetcache_uniquemri.json` — verbatim from
+    live probe of `dataset=MSV000082048`
+- Live smoke tests for all three HTTP layers are gated on
+  `INDICIUM_LIVE_TESTS=1` so CI doesn't depend on the external endpoints.
 
 ### Deferred to v0.7.0
 - GNPS `view_all_clusters_withID_beta` and `view_network_pairs` views —
