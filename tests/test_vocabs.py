@@ -37,6 +37,16 @@ def test_wd_organisms_has_substantial_entries():
     wd = _load("_wd_organisms.json")
     assert len(wd) >= 100, f"WD organisms count too small: {len(wd)}"
     # Each entry should have qid + label
-    for label, info in wd.items():
+    for _label, info in wd.items():
         assert info["qid"].startswith("Q")
         assert "label" in info
+
+
+def test_wd_organisms_has_canonical_species():
+    """v0.3.0: curated P225 taxon-name lookup ensures key metabolomics-relevant species."""
+    wd = _load("_wd_organisms.json")
+    # Well-known species from the curated list — should always be present.
+    required = ["homo sapiens", "apis mellifera", "arabidopsis thaliana",
+                "coffea arabica", "danio rerio"]
+    missing = [s for s in required if s not in wd]
+    assert not missing, f"Missing expected species in _wd_organisms.json: {missing}"

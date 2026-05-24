@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] — 2026-05-24
+
+### Added
+- **RefMet canonical-name layer**: `refmet_name` column in the bundled TSV is
+  now populated for 628 rows (was empty in v0.2.0). Built by querying the
+  Metabolomics Workbench REST API (`/rest/refmet/match/<inchikey>/all`) for
+  rows with an InChIKey AND an HMDB ID AND at least one of KEGG or PubChem
+  (cap 5,000 highest-priority rows; v0.3.0 was a partial run that cached
+  900 lookups with ~70% RefMet hit rate before being checkpointed).
+  Re-running `build_data.py` against the existing cache at
+  `data/_refmet_cache.json` (gitignored) is incremental — fills more on
+  subsequent invocations without re-fetching. Also fills `chemical_class`
+  (RefMet `main_class`), `super_class`, and `pathway` (`sub_class`) where
+  available.
+- **Wikidata top-organisms ranked by sitelinks**: replaces v0.2.0's random-sample
+  list (200 entries, no rank ordering) with a proper curated+ranked query split
+  into two tiers to dodge the WQS 60s timeout:
+  - Tier A: 53 curated well-known species by scientific name (via `wdt:P225`)
+    in two batches — guarantees coverage of Homo sapiens, Apis mellifera,
+    Coffea arabica, Arabidopsis thaliana, etc.
+  - Tier B: broad `wdt:P31=Q16521` supplement (LIMIT 400, no ORDER BY) for
+    additional coverage.
+  Result: 460 organisms (was 200); common species now present with canonical
+  QIDs.
+
+### Notes
+- The RefMet cache at `data/_refmet_cache.json` is gitignored. Re-running
+  `build_data.py` reuses the cache; delete it to force a full refresh.
+- The enrichment covers ~5k highest-priority rows per run. The remaining
+  ~16k rows (InChIKey + HMDB only, no KEGG/PubChem) are roadmap for v0.4.0.
+
 ## [0.2.0] — 2026-05-24
 
 ### Added

@@ -8,7 +8,7 @@ Produces 4 JSON files in this dir:
   _npc_terms.json       — NPClassifier pathways/classes/superclasses → NPC: CURIEs
   _po_terms.json        — Plant Ontology body-part labels → PO: CURIEs
   _ro_terms.json        — Relations Ontology biotic interactions → RO: CURIEs
-  _wd_organisms.json    — Top Wikidata species ranked by sitelinks (3-tier query) → {qid, label}
+  _wd_organisms.json    — Top Wikidata species (curated P225 + broad P31 supplement) → {qid, label}
 
 Sources:
   NPC: parses ~/git/earth_metabolome_ontology/npc_taxonomy.ttl (local repo)
@@ -214,7 +214,8 @@ def build_wd_organisms() -> dict[str, dict[str, str]]:
             else:
                 prev = seen_taxon[taxon]
                 # Prefer an English common name (different from the taxon name)
-                if label.lower() != taxon.lower() and prev["label"].lower() == prev["taxon"].lower():
+                prev_taxon_lower = prev["taxon"].lower()
+                if label.lower() != taxon.lower() and prev["label"].lower() == prev_taxon_lower:
                     seen_taxon[taxon] = {"qid": raw_qid, "label": label, "taxon": taxon}
 
     for entry in seen_taxon.values():

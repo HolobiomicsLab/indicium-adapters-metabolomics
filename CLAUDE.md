@@ -29,15 +29,26 @@ All three:
 Two maintainer-only scripts under `src/indicium_adapters_metabolomics/data/`:
 
 - `build_data.py` regenerates `refmet_compounds.tsv` from the Wikidata SPARQL
-  endpoint. Chunked by ChEBI ID range with checkpoint resume. Run with:
+  endpoint. Chunked by ChEBI ID range with checkpoint resume. After the
+  Wikidata fetch, calls `enrich_with_refmet()` which hits the Metabolomics
+  Workbench REST API for the 5k highest-priority rows (InChIKey + HMDB + KEGG/
+  PubChem). Caches to `_refmet_cache.json` (gitignored). Run with:
 
       python -m indicium_adapters_metabolomics.data.build_data
+
+  To re-enrich only (without re-fetching Wikidata), load the existing TSV and
+  call `enrich_with_refmet()` directly (see sprint notes for the one-off
+  invocation pattern).
 
 - `build_vocabs.py` regenerates the 4 inline-vocab JSON files
   (`_npc_terms.json`, `_po_terms.json`, `_ro_terms.json`, `_wd_organisms.json`)
   from npc_taxonomy.ttl (local), PO/RO OWL (downloaded), Wikidata SPARQL:
 
       python -m indicium_adapters_metabolomics.data.build_vocabs
+
+  The `_wd_organisms.json` file now uses a two-tier strategy: curated P225
+  taxon-name lookup (53 species, 2 batches) + broad P31=Q16521 LIMIT 400.
+  This avoids the 60s WQS timeout that killed ORDER-BY approaches.
 
 Don't run either at install or import time.
 

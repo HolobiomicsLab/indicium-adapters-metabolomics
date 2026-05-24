@@ -11,5 +11,5 @@ from indicium_adapters_metabolomics.metabokg import MetaboKGAdapter
 from indicium_adapters_metabolomics.metabolomics import MetabolomicsAdapter
 from indicium_adapters_metabolomics.mztab import parse_mztab_to_claims
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = ["EMIAdapter", "MetaboKGAdapter", "MetabolomicsAdapter", "parse_mztab_to_claims"]

@@ -16,25 +16,27 @@ exposes all the major metabolite databases as properties:
 The Wikidata Query Service has a 60s timeout; we chunk by ChEBI-ID range so
 each subquery stays under the limit.
 
-RefMet integration is intentionally deferred — Wikidata's rdfs:label and the
-ChEBI-recommended name are sufficient for the `name_lower` column at this
-stage. RefMet name canonicalization comes in v0.3.0.
+Strategy (v0.3.0): After the Wikidata fetch, enrich_with_refmet() is called to
+populate the refmet_name + chemical_class + super_class + pathway columns for
+the subset of rows that have both InChIKey and HMDB (best RefMet hit rate).
+The function throttles to 0.5s/request and caches to _refmet_cache.json
+(gitignored) to allow incremental re-runs.
 
-Output: refmet_compounds.tsv (~30k rows) at the package data dir.
+Output: refmet_compounds.tsv (~156k rows) at the package data dir.
 """
 from __future__ import annotations
 
 import csv
 import sys
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import requests
 
 WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
 USER_AGENT = (
-    "indicium-adapters-metabolomics/0.2.0 build_data.py "
+    "indicium-adapters-metabolomics/0.3.0 build_data.py "
     "(https://github.com/HolobiomicsLab/indicium-adapters-metabolomics)"
 )
 OUTPUT_PATH = Path(__file__).parent / "refmet_compounds.tsv"
@@ -109,7 +111,7 @@ def _extract_row(binding: dict) -> dict[str, str]:
     label = v("wdLabel")
     return {
         "name_lower":     label.lower() if label else "",
-        "refmet_name":    "",  # deferred to v0.3.0
+        "refmet_name":    "",  # populated by enrich_with_refmet() after fetch
         "inchikey":       inchikey,
         "inchikey2d":     inchikey[:14] if len(inchikey) >= 14 else "",
         "chebi":          f"CHEBI:{v('chebi')}" if v("chebi") else "",
@@ -198,18 +200,125 @@ def write_tsv(rows: list[dict[str, str]], path: Path = OUTPUT_PATH) -> None:
             writer.writerow({col: row.get(col, "") for col in COLUMNS})
 
 
+# RefMet REST endpoint — per-InChIKey lookup
+_REFMET_URL = (
+    "https://www.metabolomicsworkbench.org/rest/refmet/match/{ik}/all"
+)
+# Maximum number of rows to enrich per run (keeps runtime ≤ ~42 min at 0.5s/req).
+_REFMET_CAP = 5_000
+
+
+def enrich_with_refmet(
+    rows: list[dict[str, str]],
+    cache_path: Path | None = None,
+) -> list[dict[str, str]]:
+    """Add refmet_name + chemical_class + super_class + pathway for HMDB+InChIKey rows.
+
+    Throttled to 0.5s per HTTP request (~120 req/min).  Caches per-InChIKey
+    responses to *cache_path* (a JSON file) so re-runs only fetch new lookups.
+
+    The target subset is rows that have BOTH an InChIKey AND an HMDB ID plus at
+    least one of KEGG or PubChem — these are the most likely to have a RefMet
+    match.  The subset is capped at _REFMET_CAP entries.
+
+    Args:
+        rows: Mutable list of row dicts (will be modified in-place).
+        cache_path: Optional path to a JSON cache file.  If the file exists it
+            is loaded on entry and written back (with any new lookups) on exit.
+
+    Returns:
+        The same list (mutated in-place; returned for convenience).
+    """
+    import json
+
+    cache: dict[str, dict[str, str]] = {}
+    if cache_path and cache_path.exists():
+        try:
+            cache = json.loads(cache_path.read_text(encoding="utf-8"))
+            print(f"  loaded {len(cache)} cached RefMet lookups", file=sys.stderr)
+        except (json.JSONDecodeError, OSError):
+            cache = {}
+
+    # Priority target: rows with InChIKey + HMDB + at least one of KEGG / PubChem.
+    targets = [
+        r for r in rows
+        if r.get("inchikey") and r.get("hmdb") and (r.get("kegg") or r.get("pubchem"))
+    ]
+    targets = targets[:_REFMET_CAP]
+    print(
+        f"  RefMet target subset: {len(targets)} rows "
+        f"(InChIKey + HMDB + KEGG/PubChem, cap={_REFMET_CAP})",
+        file=sys.stderr,
+    )
+
+    fetched = 0
+    for row in targets:
+        ik = row["inchikey"]
+        if ik in cache:
+            entry = cache[ik]
+        else:
+            try:
+                resp = requests.get(
+                    _REFMET_URL.format(ik=ik),
+                    timeout=30,
+                )
+                if resp.status_code == 200 and resp.text.strip().startswith("{"):
+                    entry = resp.json()
+                    # Treat placeholder "-" as empty string
+                    entry = {k: ("" if v == "-" else v) for k, v in entry.items()}
+                else:
+                    entry = {}
+                cache[ik] = entry
+                fetched += 1
+                time.sleep(0.5)
+                if fetched % 100 == 0:
+                    print(f"  fetched {fetched} new RefMet rows (total cache={len(cache)})",
+                          file=sys.stderr)
+                    if cache_path:
+                        cache_path.write_text(
+                            json.dumps(cache, ensure_ascii=False), encoding="utf-8"
+                        )
+            except (requests.RequestException, ValueError):
+                cache[ik] = {}
+                continue
+
+        if entry:
+            row["refmet_name"] = entry.get("refmet_name", "")
+            row["chemical_class"] = entry.get("main_class", "")
+            row["super_class"] = entry.get("super_class", "")
+            row["pathway"] = entry.get("sub_class", "")
+
+    if cache_path:
+        cache_path.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+        print(f"  saved {len(cache)} RefMet lookups to {cache_path}", file=sys.stderr)
+
+    n_enriched = sum(1 for r in rows if r.get("refmet_name"))
+    print(f"  {n_enriched} rows now have refmet_name", file=sys.stderr)
+    return rows
+
+
 def main() -> int:
     print(f"Querying Wikidata SPARQL: {WIKIDATA_SPARQL}", file=sys.stderr)
     rows = fetch_all_wikidata()
     print(f"\nFetched {len(rows)} raw rows", file=sys.stderr)
     rows = deduplicate_on_inchikey(rows)
     print(f"After InChIKey dedupe: {len(rows)} rows", file=sys.stderr)
+
+    # RefMet enrichment (v0.3.0) — throttled per-InChIKey lookup.
+    cache_path = Path(__file__).parent / "_refmet_cache.json"
+    rows = enrich_with_refmet(rows, cache_path=cache_path)
+    print(
+        f"After RefMet enrichment: "
+        f"{sum(1 for r in rows if r.get('refmet_name'))} rows have refmet_name",
+        file=sys.stderr,
+    )
+
     write_tsv(rows)
     print(f"Wrote {OUTPUT_PATH}", file=sys.stderr)
     # Clean up checkpoint file on success
     if CHECKPOINT_PATH.exists():
         CHECKPOINT_PATH.unlink()
-        print(f"Removed checkpoint file", file=sys.stderr)
+        print("Removed checkpoint file", file=sys.stderr)
     return 0
 
 

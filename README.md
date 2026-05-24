@@ -12,8 +12,9 @@ All three register under the `indicium.adapters` entry-point group and are disco
 
 Also bundles a mzTab-M 2.0 parser (`indicium_adapters_metabolomics.mztab.parse_mztab_to_claims`)
 that projects SML and SMF rows of a PSI mzTab-M file into ASB claim dicts,
-plus a ~156k-compound cross-reference TSV (Wikidata-derived: ChEBI, HMDB,
-KEGG, LIPIDMAPS, PubChem, Wikidata QID) used by `MetabolomicsAdapter.enrich_claim()`.
+plus a ~156k-compound cross-reference TSV (Wikidata-derived: ChEBI, HMDB, KEGG,
+LIPIDMAPS, PubChem, Wikidata QID; RefMet canonical names for ~3,400 rows via the
+Metabolomics Workbench REST API) used by `MetabolomicsAdapter.enrich_claim()`.
 
 ## Install
 

@@ -35,7 +35,7 @@ def _load_interaction_types() -> dict[str, str]:
 
 @lru_cache(maxsize=1)
 def _load_wd_organisms() -> dict[str, dict[str, str]]:
-    """Lazy-load Wikidata top organisms (~200 entries at v0.2.0).
+    """Lazy-load Wikidata top organisms (~460 entries at v0.3.0).
 
     Keys: lowercase organism label. Values: {'qid': 'Q...', 'label': 'Original Label'}.
     """
@@ -104,7 +104,7 @@ class EMIAdapter:
             if curie := _load_interaction_types().get(obj):
                 claim.setdefault("ontology_terms", {})["object"] = curie
 
-        # New in v0.2.0: organism-label → WD:Qxxx lookup
+        # v0.2.0+: organism-label → WD:Qxxx lookup (460 organisms at v0.3.0)
         for slot in ("subject", "object"):
             if slot in claim.get("ontology_terms", {}):
                 continue   # already tagged (e.g. by QID-pattern detection earlier)

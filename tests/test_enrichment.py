@@ -7,7 +7,7 @@ from indicium_adapters_metabolomics._enrichment import COMPOUND_INDEX, CompoundI
 def test_lookup_by_name_returns_row():
     row = COMPOUND_INDEX.lookup("glucose")
     assert row is not None
-    # v0.2.0: refmet_name is empty (deferred to v0.3.0); pin stable CHEBI CURIE instead
+    # Pin stable identifiers that should never change.
     assert row["chebi"] == "CHEBI:17234"
     assert row["wikidata"] == "WD:Q37525"
 
@@ -30,7 +30,7 @@ def test_lookup_by_full_inchikey():
     # WQZGKKKJIJFFOK-GASJEMHNSA-N is the InChIKey for d-glucopyranose (CHEBI:4167) in Wikidata
     row = COMPOUND_INDEX.lookup("WQZGKKKJIJFFOK-GASJEMHNSA-N")
     assert row is not None
-    # v0.2.0: refmet_name empty; pin stable CHEBI CURIE instead
+    # Pin stable CHEBI CURIE.
     assert row["chebi"] == "CHEBI:4167"
 
 
@@ -38,7 +38,7 @@ def test_lookup_by_inchikey2d():
     # InChIKey2D lookup returns the first matching compound with that 2D skeleton
     row = COMPOUND_INDEX.lookup("WQZGKKKJIJFFOK")
     assert row is not None
-    # v0.2.0: refmet_name empty; verify chebi is present (multiple pyranose isomers share this 2D key)
+    # Multiple pyranose isomers share this 2D key; just verify the CHEBI column is present.
     assert "chebi" in row
 
 
@@ -50,7 +50,7 @@ def test_lookup_is_pure():
 
 
 def test_index_size_substantial():
-    """The bundled TSV ships ~156k metabolites at v0.2.0.
+    """The bundled TSV ships ~156k metabolites.
 
     Bump the threshold here whenever build_data.py is re-run and the
     bundled TSV grows significantly, so this acts as a real regression
@@ -58,6 +58,22 @@ def test_index_size_substantial():
     """
     _ = COMPOUND_INDEX.lookup("water")
     assert len(COMPOUND_INDEX._by_name) >= 100_000
+
+
+def test_refmet_name_populated_for_well_known_metabolites():
+    """v0.3.0: refmet_name column is populated for HMDB+InChIKey+KEGG-mapped metabolites.
+
+    The enrichment covers the subset with InChIKey + HMDB + KEGG/PubChem (~5k rows).
+    L-lactic acid is a well-known metabolite with all four cross-references; its
+    RefMet canonical name should be 'Lactic acid'.
+    """
+    row = COMPOUND_INDEX.lookup("l-lactic acid")
+    assert row is not None, "Expected 'l-lactic acid' in CompoundIndex"
+    # L-Lactic acid has InChIKey + HMDB + KEGG + PubChem, so RefMet should be populated.
+    assert row.get("refmet_name"), (
+        "Expected non-empty refmet_name for L-lactic acid after v0.3.0 enrichment; "
+        f"got {row.get('refmet_name')!r}"
+    )
 
 
 def test_lazy_load_only_once():
