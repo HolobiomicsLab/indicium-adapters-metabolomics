@@ -2,20 +2,44 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-# Validate CURIE format on subject/object ontology terms in any asb:Claim.
-# Warning-level: foreign CURIEs are tolerated but flagged.
+# v0.4.0 — base required-fields shape. Every asb:Claim must carry both an
+# asb:subject and an asb:qualifier; severity is sh:Violation. This is the
+# adapter family's BASE shape (lives on MetabolomicsAdapter) so when the
+# three adapters are composed via compose_adapters() the constraint appears
+# exactly once in the merged graph.
+asb:ClaimRequiredFieldsShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:subject ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "asb:Claim must have at least one asb:subject" ;
+    ] ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "asb:Claim must have at least one asb:qualifier" ;
+    ] .
+
+# v0.4.0 — bumped from sh:Warning to sh:Violation per audit finding #4.
+# CURIE format on subject/object ontology terms is checked only when those
+# slots are present (sh:minCount is unset → 0..*). An unrecognised metabolomics
+# prefix is now a hard failure rather than a tolerated warning, so consumers
+# get a deterministic signal when an extractor emits a bogus CURIE.
 asb:MetabolomicsClaimCurieShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
     sh:property [
         sh:path asb:subject_ontology_term ;
-        sh:pattern "^(CHEBI|HMDB|MTBLS|KEGG|LIPIDMAPS|PUBCHEM|WD|REFMET|NCBITaxon|ENVO):[A-Za-z0-9_.:-]+$" ;
-        sh:severity sh:Warning ;
-        sh:message "subject_ontology_term should use a recognized metabolomics prefix" ;
+        sh:pattern "^(CHEBI|HMDB|MTBLS|MW|MSV|KEGG|LIPIDMAPS|PUBCHEM|WD|REFMET|NCBITaxon|ENVO):[A-Za-z0-9_.:-]+$" ;
+        sh:severity sh:Violation ;
+        sh:message "subject_ontology_term must use a recognized metabolomics prefix (CHEBI/HMDB/MTBLS/MW/MSV/KEGG/LIPIDMAPS/PUBCHEM/WD/REFMET/NCBITaxon/ENVO)" ;
     ] ;
     sh:property [
         sh:path asb:object_ontology_term ;
-        sh:pattern "^(CHEBI|HMDB|MTBLS|KEGG|LIPIDMAPS|PUBCHEM|WD|REFMET|NCBITaxon|ENVO):[A-Za-z0-9_.:-]+$" ;
-        sh:severity sh:Warning ;
-        sh:message "object_ontology_term should use a recognized metabolomics prefix" ;
+        sh:pattern "^(CHEBI|HMDB|MTBLS|MW|MSV|KEGG|LIPIDMAPS|PUBCHEM|WD|REFMET|NCBITaxon|ENVO):[A-Za-z0-9_.:-]+$" ;
+        sh:severity sh:Violation ;
+        sh:message "object_ontology_term must use a recognized metabolomics prefix (CHEBI/HMDB/MTBLS/MW/MSV/KEGG/LIPIDMAPS/PUBCHEM/WD/REFMET/NCBITaxon/ENVO)" ;
     ] .

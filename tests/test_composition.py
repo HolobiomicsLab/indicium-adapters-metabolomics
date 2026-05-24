@@ -46,7 +46,8 @@ def test_qualifiers_are_disjoint_across_adapters():
 
 def test_compose_qualifier_union():
     composite = compose_adapters(_three_adapters())
-    expected_total = 8 + 7 + 13
+    # v0.4.0: MetabolomicsAdapter grew by 5 study-level qualifiers (8 → 13).
+    expected_total = 13 + 7 + 13
     assert len(composite.qualifiers) == expected_total
 
 

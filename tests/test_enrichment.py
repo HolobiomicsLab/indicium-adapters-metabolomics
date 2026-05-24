@@ -116,6 +116,42 @@ def test_lookup_by_curie_unknown_returns_none():
     assert COMPOUND_INDEX.lookup("CHEBI:99999999999") is None
 
 
+def test_synonym_layer_resolves_iaa():
+    """v0.4.0: synonym layer resolves 'indole-3-acetic acid' to indoleacetic
+    acid (CHEBI:16411). Closes the IAA gap surfaced by the 2026-05-24 audit
+    where Wikidata's English label is 'indoleacetic acid' but papers / LLMs
+    typically write 'indole-3-acetic acid'.
+    """
+    row = COMPOUND_INDEX.lookup("indole-3-acetic acid")
+    assert row is not None
+    assert row["chebi"] == "CHEBI:16411"
+    # Acronym form too
+    assert (COMPOUND_INDEX.lookup("IAA") or {}).get("chebi") == "CHEBI:16411"
+
+
+def test_synonym_layer_resolves_well_known_vitamins_and_acronyms():
+    """A handful of high-confidence synonyms verified at TSV-load time."""
+    cases = {
+        "ATP":                 "adenosine triphosphate",
+        "vitamin b12":         "cobalamin",
+        "EGCG":                "epigallocatechin gallate",
+        "ascorbic acid":       "vitamin c",
+        "acetylsalicylic acid":"aspirin",
+        "DHA":                 "docosahexaenoic acid",
+    }
+    for alias, target in cases.items():
+        row = COMPOUND_INDEX.lookup(alias)
+        assert row is not None, f"alias {alias!r} did not resolve"
+        # Both must point at the same row.
+        assert row is COMPOUND_INDEX.lookup(target)
+
+
+def test_synonym_layer_unknown_alias_still_misses():
+    """A bare gibberish string still returns None — synonyms shouldn't
+    accidentally widen the lookup surface."""
+    assert COMPOUND_INDEX.lookup("zzz-not-a-real-thing") is None
+
+
 def test_lazy_load_only_once():
     """Loading is idempotent."""
     fresh = CompoundIndex()

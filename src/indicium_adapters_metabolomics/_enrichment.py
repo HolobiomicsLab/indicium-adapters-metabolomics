@@ -7,6 +7,7 @@ Pure function: no I/O during lookup, no network anywhere.
 from __future__ import annotations
 
 import csv
+import json
 from importlib.resources import files
 
 
@@ -73,6 +74,23 @@ class CompoundIndex:
                     # can pass either "CHEBI:17234" or "chebi:17234".
                     self._by_curie.setdefault(curie, row)
                     self._by_curie.setdefault(curie.upper(), row)
+        # Synonym layer (v0.4.0): names a paper or LLM might emit that don't
+        # match the Wikidata-derived canonical label. Each alias is aliased
+        # into `_by_name` to point at the same row, so lookup() needs no
+        # extra logic. Targets are verified at load-time; unknown targets
+        # are silently skipped (defensive against TSV regeneration).
+        syn_path = files("indicium_adapters_metabolomics.data").joinpath(
+            "_synonyms.json"
+        )
+        synonyms = json.loads(syn_path.read_text(encoding="utf-8"))
+        for alias, target in synonyms.items():
+            if alias.startswith("_"):  # skip _meta block
+                continue
+            target_l = target.strip().lower()
+            row = self._by_name.get(target_l)
+            if row is None:
+                continue
+            self._by_name.setdefault(alias.strip().lower(), row)
         self._loaded = True
 
     def lookup(self, query: str) -> dict[str, str] | None:

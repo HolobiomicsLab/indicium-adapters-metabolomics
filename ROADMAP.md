@@ -53,6 +53,12 @@ The roadmap below leans heavily on quadrants 1–3. New PRs should justify thems
 
 See CHANGELOG.md.
 
+## v0.4.0 — RELEASED 2026-05-24 (deferred audit items)
+
+See CHANGELOG.md. Closes the three items the v0.3.1 release deferred:
+SHACL tightening (finding #4), 5 study-level qualifiers for ASB heuristic
+fields (finding #6), and the compound-name synonym layer (finding #7).
+
 ## v0.3.1 — RELEASED 2026-05-24 (audit follow-up)
 
 See CHANGELOG.md. Closes finding #1 (Python floor), #2 (MSV/MW prefixes),
@@ -73,28 +79,26 @@ Done items from the v0.3.0 candidate list:
   P225 taxon name, two batches) + broad P31=Q16521 LIMIT 400 supplement.
   460 organisms with canonical QIDs.
 
-## v0.4.0 candidates
+## v0.5.0 candidates (carried forward from v0.4.0)
 
-- **Tighten SHACL shapes (audit finding #3)** — bump
-  `MetabolomicsClaimCurieShape` from `sh:Warning` to `sh:Violation`, add a
-  shape constraining `asb:qualifier` to the adapter's qualifier frozenset,
-  add a shape requiring `asb:subject` and `asb:qualifier` to be present. The
-  current shapes pass empty subjects, made-up qualifiers, and garbage CURIEs
-  under the typical `allow_warnings=True` invocation.
-- **Five missing qualifiers for ASB heuristic output (audit finding #6)** —
-  `has_processing_software`, `analyzed_with`, `acquired_in_mode`,
-  `chromatographed_on`, `uses_mass_analyzer`. These let the adapter project
-  ASB metabolomics_metadata into claims without needing LLM extraction.
-- **Compound synonym layer (audit finding #7)** — Wikidata's English label
-  for IAA is "indoleacetic acid"; ASB and papers say "indole-3-acetic acid".
-  A small synonym JSON bridging common dashes / numbering variants would
-  close the last few percent of resolution misses.
+The v0.4.0 release landed the three SHACL/qualifier/synonym items. Remaining
+v0.4.0 candidates that did not ship:
+
 - **mzTab-M SME (evidence) projection** — extend `parse_mztab_to_claims` to
   also emit `spectral_match` claims from SME rows.
 - **Compress the bundled TSV** — gzip dropping ~22 MB to ~5 MB; CompoundIndex
   loads transparently.
 - **Expand RefMet enrichment** — cover the remaining ~16k rows that have
   InChIKey + HMDB but not KEGG/PubChem.
+- **Per-adapter qualifier-vocabulary SHACL** — currently the adapters'
+  qualifier sets are advisory (used by `extraction_context()`) but no SHACL
+  shape constrains the literal `asb:qualifier` value to that vocabulary.
+  Adding one as `sh:Warning` (so composition doesn't cross-fire) would catch
+  truly made-up qualifiers without false-positives across adapters.
+- **Synonym layer expansion** — current `_synonyms.json` is ~30 entries
+  hand-curated against the Wikidata-derived TSV. A maintainer pass through
+  the most-common-name lists from MetaboAtlas, HMDB, and the Metabolomics
+  Workbench RefMet API would expand this with low risk.
 
 ## v0.5.0+ — paper-workflow expansion
 
