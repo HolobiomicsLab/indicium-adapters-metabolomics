@@ -28,9 +28,6 @@ emi          = "indicium_adapters_metabolomics.emi:EMIAdapter"
 [tool.hatch.build.targets.wheel]
 packages = ["src/indicium_adapters_metabolomics"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/indicium_adapters_metabolomics/data" = "indicium_adapters_metabolomics/data"
-"src/indicium_adapters_metabolomics/shapes" = "indicium_adapters_metabolomics/shapes"
 
 [tool.ruff]
 line-length = 100
