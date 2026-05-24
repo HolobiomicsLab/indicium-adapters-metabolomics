@@ -19,6 +19,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
@@ -64,4 +65,4 @@ omit = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --strict-markers"
+addopts = "-v --strict-markers --cov=indicium_adapters_metabolomics --cov-report=term-missing --cov-fail-under=90"

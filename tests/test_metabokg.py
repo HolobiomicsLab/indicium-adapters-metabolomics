@@ -85,6 +85,17 @@ def test_enrich_does_not_mutate_input(metabokg_claim):
     assert metabokg_claim == snap
 
 
+def test_enrich_spectral_match_with_inchikey():
+    """A bare InChIKey in object slot for spectral_match gets InChIKey: prefix (lines 80-81)."""
+    claim = {
+        "subject": "feature_99", "qualifier": "spectral_match",
+        "object": "WQZGKKKJIJFFOK-GASJEMHNSA-N",
+        "ontology_terms": {}, "evidence_id": "x",
+    }
+    out = MetaboKGAdapter().enrich_claim(claim)
+    assert out["ontology_terms"]["object"] == "InChIKey:WQZGKKKJIJFFOK-GASJEMHNSA-N"
+
+
 def test_shacl_shapes_returns_graph():
     g = MetaboKGAdapter().shacl_shapes()
     assert isinstance(g, rdflib.Graph)

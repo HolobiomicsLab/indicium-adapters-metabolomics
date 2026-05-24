@@ -50,10 +50,14 @@ def test_lookup_is_pure():
 
 
 def test_index_size_substantial():
-    """The v0.2.0 TSV ships ~156k rows from Wikidata; verify substantial coverage."""
-    # Force a load
-    COMPOUND_INDEX._load()
-    assert len(COMPOUND_INDEX._by_name) >= 5000
+    """The bundled TSV ships ~156k metabolites at v0.2.0.
+
+    Bump the threshold here whenever build_data.py is re-run and the
+    bundled TSV grows significantly, so this acts as a real regression
+    guard. Current target: ≥100,000 rows.
+    """
+    _ = COMPOUND_INDEX.lookup("water")
+    assert len(COMPOUND_INDEX._by_name) >= 100_000
 
 
 def test_lazy_load_only_once():

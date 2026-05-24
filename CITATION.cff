@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+title: indicium-adapters-metabolomics
+message: "If you use this software, please cite it as below."
+type: software
+version: 0.2.0
+date-released: "2026-05-24"
+authors:
+  - family-names: Nothias
+    given-names: Louis-Felix
+    email: louis-felix.nothias@cnrs.fr
+    orcid: "https://orcid.org/0000-0001-6699-8731"
+repository-code: "https://github.com/HolobiomicsLab/indicium-adapters-metabolomics"
+license: MIT
+keywords:
+  - metabolomics
+  - knowledge-graph
+  - rdf
+  - shacl
+  - indicium
+  - metabokg
+  - earth-metabolome
+  - metrin-kg
+abstract: >-
+  Metabolomics-domain DomainAdapters for the indicium ecosystem.
+  Bundles MetabolomicsAdapter (base), MetaboKGAdapter, EMIAdapter
+  (ENPKG + METRIN-KG), plus a mzTab-M 2.0 parser and a ~156k-compound
+  cross-reference table.

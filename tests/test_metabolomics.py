@@ -82,6 +82,17 @@ def test_enrich_claim_priority_chebi_then_hmdb():
     assert out["ontology_terms"]["subject"] == "CHEBI:17234"
 
 
+def test_enrich_claim_preserves_existing_xrefs():
+    """Pre-existing xrefs in input are preserved (shallow copy, line 67 branch)."""
+    claim = {
+        "subject": "glucose", "qualifier": "identifies", "object": "",
+        "ontology_terms": {}, "evidence_id": "x",
+        "xrefs": {"prior": {"some_id": "ABC123"}},
+    }
+    out = MetabolomicsAdapter().enrich_claim(claim)
+    assert "prior" in out["xrefs"]
+
+
 def test_shacl_shapes_returns_non_empty_graph():
     g = MetabolomicsAdapter().shacl_shapes()
     assert isinstance(g, rdflib.Graph)
