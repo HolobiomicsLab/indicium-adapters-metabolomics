@@ -35,6 +35,7 @@ class MetabolomicsAdapter:
     api_version = 1
 
     qualifiers: frozenset[str] = frozenset({
+        # Per-compound (claim-level) assertions.
         "identifies",
         "quantifies",
         "is_biomarker_for",
@@ -43,6 +44,17 @@ class MetabolomicsAdapter:
         "co_occurs_with",
         "found_in_organism",
         "found_in_environment",
+        # Study-level assay-metadata qualifiers (v0.4.0). Subject is typically
+        # a study or capsule identifier; object is the tool/parameter literal.
+        # Added per the 2026-05-24 audit so ASB metabolomics_metadata
+        # (processing_software, instrument, ionization_mode,
+        # chromatography_type, mass_analyzer) can be projected to claims
+        # without requiring the LLM extraction layer.
+        "has_processing_software",
+        "analyzed_with",
+        "acquired_in_mode",
+        "chromatographed_on",
+        "uses_mass_analyzer",
     })
 
     ontology_prefixes: dict[str, str] = METABOLOMICS_PREFIXES
@@ -51,9 +63,16 @@ class MetabolomicsAdapter:
         return (
             "Domain: metabolomics. Extra qualifiers available: "
             "identifies, quantifies, is_biomarker_for, discriminates_between, "
-            "metabolizes, co_occurs_with, found_in_organism, found_in_environment. "
+            "metabolizes, co_occurs_with, found_in_organism, found_in_environment, "
+            "has_processing_software, analyzed_with, acquired_in_mode, "
+            "chromatographed_on, uses_mass_analyzer. "
             "Use canonical compound names (RefMet-compatible, CHEBI-compatible) "
-            "for metabolite subjects and objects where possible."
+            "for metabolite subjects and objects where possible. "
+            "Study-level qualifiers (has_processing_software, analyzed_with, "
+            "acquired_in_mode, chromatographed_on, uses_mass_analyzer) take a "
+            "study/capsule ID as subject and a tool / instrument / mode literal "
+            "as object (e.g. 'MZmine', 'Q-Exactive HF', 'positive', "
+            "'C18 reverse-phase', 'Orbitrap')."
         )
 
     def enrich_claim(self, claim: dict) -> dict:

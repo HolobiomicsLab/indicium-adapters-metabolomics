@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "indicium-adapters-metabolomics"
-version = "0.3.1"
+version = "0.4.0"
 description = "Metabolomics-domain DomainAdapters for the indicium ecosystem: MetabolomicsAdapter, MetaboKGAdapter, EMIAdapter (ENPKG + METRIN-KG)"
 readme = "README.md"
 requires-python = ">=3.12"
