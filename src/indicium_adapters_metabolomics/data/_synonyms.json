@@ -1,8 +1,8 @@
 {
   "_meta": {
-    "description": "Compound-name synonym map for CompoundIndex. Keys are alternate names a paper or LLM might emit; values are the canonical lowercase name as it appears in refmet_compounds.tsv. Every entry has been verified against the bundled TSV — the target name must exist in by_name. Order: numbered/dashed isomer variants, then unicode-vs-ASCII Greek-letter variants, then well-known acronyms, then trivial/vitamin synonyms.",
+    "description": "Compound-name synonym map for CompoundIndex. Keys are alternate names a paper or LLM might emit; values are the canonical lowercase name as it appears in refmet_compounds.tsv. Every entry has been verified against the bundled TSV — the target name must exist in by_name. Order: numbered/dashed isomer variants, then unicode-vs-ASCII Greek-letter variants, then well-known acronyms, then trivial/vitamin synonyms, then v0.5.0 domain-specific tier from audit 2 (gut metabolites, natural-product drugs, plant phenolics).",
     "verified_against_tsv": "2026-05-24",
-    "version": 1
+    "version": 2
   },
   "indole-3-acetic acid":      "indoleacetic acid",
   "indole 3 acetic acid":      "indoleacetic acid",
@@ -35,5 +35,23 @@
   "dha":                       "docosahexaenoic acid",
   "epa":                       "eicosapentaenoic acid",
   "acetylsalicylic acid":      "aspirin",
-  "acetaminophen":             "paracetamol"
+  "acetaminophen":             "paracetamol",
+
+  "trimethylamine n-oxide":    "trimethylamine oxide",
+  "trimethylamine-n-oxide":    "trimethylamine oxide",
+  "tmao":                      "trimethylamine oxide",
+  "rapamycin":                 "sirolimus",
+  "p-cresol":                  "para-cresol",
+  "4-cresol":                  "para-cresol",
+  "4-methylphenol":            "para-cresol",
+  "p-coumaric acid":           "4-coumaric acid",
+  "para-coumaric acid":        "4-coumaric acid",
+  "compactin":                 "mevastatin",
+  "indoxyl sulphate":          "indoxyl sulfate",
+  "tetracyclin":               "tetracycline",
+  "kanamycin":                 "kanamycin a",
+  "catechin":                  "(+)-catechin",
+  "indole-3-propionic acid":   "3-indolepropionic acid",
+  "indolepropionic acid":      "3-indolepropionic acid",
+  "indolyl-3-propionic acid":  "3-indolepropionic acid"
 }

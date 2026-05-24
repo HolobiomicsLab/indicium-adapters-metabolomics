@@ -152,6 +152,34 @@ def test_synonym_layer_unknown_alias_still_misses():
     assert COMPOUND_INDEX.lookup("zzz-not-a-real-thing") is None
 
 
+def test_synonym_layer_v0_5_0_domain_specific_aliases():
+    """v0.5.0: 9+ extra synonyms added per the 2026-05-24 audit-2 misses.
+
+    These cover gut metabolites (TMAO, p-cresol), natural-product drug name
+    variants (rapamycin → sirolimus, compactin → mevastatin), plant phenolic
+    spellings (catechin, p-coumaric acid), and UK/typo variants.
+    """
+    cases = {
+        "TMAO":                       "trimethylamine oxide",
+        "trimethylamine n-oxide":     "trimethylamine oxide",
+        "rapamycin":                  "sirolimus",
+        "p-cresol":                   "para-cresol",
+        "4-methylphenol":             "para-cresol",
+        "p-coumaric acid":            "4-coumaric acid",
+        "compactin":                  "mevastatin",
+        "indoxyl sulphate":           "indoxyl sulfate",
+        "tetracyclin":                "tetracycline",
+        "kanamycin":                  "kanamycin a",
+        "catechin":                   "(+)-catechin",
+        "indole-3-propionic acid":    "3-indolepropionic acid",
+    }
+    for alias, target in cases.items():
+        a, t = COMPOUND_INDEX.lookup(alias), COMPOUND_INDEX.lookup(target)
+        assert a is not None, f"alias {alias!r} did not resolve"
+        assert t is not None, f"canonical target {target!r} missing from TSV"
+        assert a is t, f"{alias!r} resolved to a different row than {target!r}"
+
+
 def test_lazy_load_only_once():
     """Loading is idempotent."""
     fresh = CompoundIndex()
