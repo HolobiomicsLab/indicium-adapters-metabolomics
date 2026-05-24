@@ -24,11 +24,33 @@ All three:
 6. Add unit tests in `tests/test_<adapter>.py`.
 7. `test_composition.py` asserts qualifier sets are disjoint across adapters — keep it that way.
 
-## Refreshing the bundled compound TSV
+## Refreshing bundled data files
 
-`src/indicium_adapters_metabolomics/data/build_data.py` is a maintainer-only script.
-Currently a skeleton; wire up the `fetch_*` functions when running a release-time refresh.
-Output: `data/refmet_compounds.tsv`. Don't run at install or import.
+Two maintainer-only scripts under `src/indicium_adapters_metabolomics/data/`:
+
+- `build_data.py` regenerates `refmet_compounds.tsv` from the Wikidata SPARQL
+  endpoint. Chunked by ChEBI ID range with checkpoint resume. Run with:
+
+      python -m indicium_adapters_metabolomics.data.build_data
+
+- `build_vocabs.py` regenerates the 4 inline-vocab JSON files
+  (`_npc_terms.json`, `_po_terms.json`, `_ro_terms.json`, `_wd_organisms.json`)
+  from npc_taxonomy.ttl (local), PO/RO OWL (downloaded), Wikidata SPARQL:
+
+      python -m indicium_adapters_metabolomics.data.build_vocabs
+
+Don't run either at install or import time.
+
+## The mztab submodule
+
+`indicium_adapters_metabolomics.mztab.parse_mztab_to_claims(path)` reads a PSI
+mzTab-M 2.0 file and projects:
+- SML (small-molecule summary) rows → `identifies` claims (subject=chemical_name,
+  object=database_identifier, ontology_terms populated if the database_identifier
+  is a CURIE).
+- SMF (small-molecule feature) rows → `has_feature` claims.
+
+SME (evidence) projection is on the v0.3.0 roadmap.
 
 ## Test before commit
 

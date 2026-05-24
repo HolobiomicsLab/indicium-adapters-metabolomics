@@ -2,13 +2,23 @@
 
 Items explicitly out of scope for v0.1.0, kept here for future minor releases.
 
-## v0.2.0 candidates
+## v0.2.0 — RELEASED 2026-05-24
 
-- **Expand bundled TSV.** Run `build_data.py` against live RefMet + BridgeDb. Target ≥10,000 compounds.
-- **Grow inline vocabularies:** NPC pathways (currently 10 → full ~150), plant parts (10 → ~50), interaction types (10 → ~30), Wikidata top-organisms (0 → 200).
-- **mzTab-M parser** as `indicium_adapters_metabolomics.mztab` submodule: project SML/SMF/SME rows from `.mztab` files into `asb:Claim` dicts.
+See CHANGELOG.md.
 
-## v0.3.0+ candidates
+## v0.3.0 candidates
+
+- **RefMet canonical-name layer** — wire the bulk RefMet API and populate the
+  `refmet_name` column of the compound TSV (currently empty).
+- **mzTab-M SME (evidence) projection** — extend `parse_mztab_to_claims` to
+  also emit `spectral_match` claims from SME rows.
+- **Compress the bundled TSV** — gzip dropping ~22 MB to ~5 MB; CompoundIndex
+  loads transparently.
+- **Re-do top-organisms SPARQL with sitelink ranking** — the v0.2.0 list is a
+  random Q16521 sample; query a paginated approach to actually get
+  most-recognized taxa.
+
+## Future / v0.4.0+ candidates
 
 - **`[enrichment]` optional extra** for live ChEBI/PubChem REST lookup with on-disk caching.
 - **`query_claims(question)` Protocol extension** for KG-backed SPARQL adapters (requires bumping `indicium-adapters.CURRENT_API_VERSION` to 2; coordinated release across consumers).
