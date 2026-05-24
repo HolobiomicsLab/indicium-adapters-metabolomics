@@ -16,15 +16,21 @@ import pytest
 
 from indicium_adapters_metabolomics.gnps import (
     fetch_gnps_annotations,
+    fetch_gnps_clusters,
+    fetch_gnps_network_pairs,
     fetch_gnps_parameters,
     gnps_task_to_claims,
     parse_gnps_annotations,
+    parse_gnps_clusters,
+    parse_gnps_network_pairs,
     parse_gnps_parameters,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
 ANNOT = json.loads((FIXTURES / "gnps_annotations_response.json").read_text())
 XML = (FIXTURES / "gnps_parameters_response.xml").read_text()
+CLUSTERS = json.loads((FIXTURES / "gnps_clusters_response.json").read_text())
+PAIRS = json.loads((FIXTURES / "gnps_pairs_response.json").read_text())
 TASK = "1ad7bc366aef45ce81d2dfcca0a9a5e7"
 
 
@@ -254,6 +260,187 @@ def test_high_level_skips_parameters_when_xml_empty():
                               cache_dir=None)
     qs = {c["qualifier"] for c in out}
     assert qs == {"spectral_match"}
+
+
+# --- parse_gnps_clusters (v0.7.0) -----------------------------------------
+
+def test_clusters_emits_one_has_feature_claim_per_row():
+    claims = parse_gnps_clusters(CLUSTERS["blockData"], TASK)
+    assert len(claims) == len(CLUSTERS["blockData"])
+    assert all(c["qualifier"] == "has_feature" for c in claims)
+
+
+def test_clusters_subject_is_task_object_is_scan_curie():
+    claims = parse_gnps_clusters(CLUSTERS["blockData"], TASK)
+    for c in claims:
+        assert c["subject"] == f"gnps_task:{TASK}"
+        assert c["object"].startswith(f"gnps_task:{TASK}:scan:")
+
+
+def test_clusters_evidence_has_typed_floats():
+    claims = parse_gnps_clusters(CLUSTERS["blockData"], TASK)
+    ev = claims[0]["evidence"]
+    assert isinstance(ev["parent_mass"], float)
+    assert isinstance(ev["rt_mean"], float)
+    assert isinstance(ev["num_spectra"], float)
+    # componentindex=-1 is preserved (sentinel for singleton cluster)
+    assert ev["component_index"] == -1.0
+
+
+def test_clusters_library_id_when_present():
+    """A library-annotated cluster carries spectrum_id + smiles in evidence."""
+    claims = parse_gnps_clusters(CLUSTERS["blockData"], TASK)
+    hits = [c for c in claims if c["evidence"].get("library_id")]
+    assert hits, "fixture should contain at least one library-annotated cluster"
+    assert hits[0]["evidence"].get("spectrum_id")
+
+
+def test_clusters_skips_row_without_cluster_index():
+    claims = parse_gnps_clusters([{"parent mass": "100.0"}], TASK)
+    assert claims == []
+
+
+def test_clusters_handles_empty_input():
+    assert parse_gnps_clusters([], TASK) == []
+    assert parse_gnps_clusters(None, TASK) == []  # type: ignore[arg-type]
+
+
+def test_clusters_source_doi_passthrough():
+    claims = parse_gnps_clusters(CLUSTERS["blockData"], TASK, source_doi="10.5/x")
+    assert all(c["source_doi"] == "10.5/x" for c in claims)
+
+
+# --- parse_gnps_network_pairs (v0.7.0) ------------------------------------
+
+def test_pairs_emits_one_claim_per_edge():
+    claims = parse_gnps_network_pairs(PAIRS["blockData"], TASK)
+    assert len(claims) == len(PAIRS["blockData"])
+    assert all(c["qualifier"] == "structurally_related_to" for c in claims)
+
+
+def test_pairs_canonicalised_so_subject_lt_object():
+    """Undirected: every emitted edge has lo<hi numerically."""
+    claims = parse_gnps_network_pairs(PAIRS["blockData"], TASK)
+    for c in claims:
+        s = int(c["subject"].rsplit(":", 1)[-1])
+        o = int(c["object"].rsplit(":", 1)[-1])
+        assert s < o
+
+
+def test_pairs_evidence_has_cos_score_and_mz_diff():
+    claims = parse_gnps_network_pairs(PAIRS["blockData"], TASK)
+    ev = claims[0]["evidence"]
+    assert isinstance(ev["cos_score"], float)
+    assert isinstance(ev["mz_diff"], float)
+    assert 0.0 <= ev["cos_score"] <= 1.0
+
+
+def test_pairs_skips_row_without_nodes():
+    claims = parse_gnps_network_pairs([{"Cos_Score": "0.9"}], TASK)
+    assert claims == []
+
+
+def test_pairs_handles_empty_input():
+    assert parse_gnps_network_pairs([], TASK) == []
+    assert parse_gnps_network_pairs(None, TASK) == []  # type: ignore[arg-type]
+
+
+def test_pairs_non_numeric_nodes_falls_back_to_alpha_order():
+    """If Node1/Node2 aren't numeric, sort alphabetically (still canonical)."""
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "scan_b", "Node2": "scan_a", "Cos_Score": "0.7"}], TASK)
+    assert claims[0]["subject"].endswith(":scan_a")
+    assert claims[0]["object"].endswith(":scan_b")
+
+
+# --- fetch_gnps_clusters / fetch_gnps_network_pairs -----------------------
+
+def test_fetch_clusters_caches(tmp_path):
+    from indicium_adapters_metabolomics.gnps.parser import _cache_path
+
+    p = _cache_path((TASK, "view_all_clusters_withID_beta"), tmp_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"blockData": [{"cluster index": "42"}]}),
+                 encoding="utf-8")
+    out = fetch_gnps_clusters(TASK, cache_dir=tmp_path)
+    assert out == {"blockData": [{"cluster index": "42"}]}
+
+
+def test_fetch_network_pairs_caches(tmp_path):
+    from indicium_adapters_metabolomics.gnps.parser import _cache_path
+
+    p = _cache_path((TASK, "view_network_pairs"), tmp_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"blockData": []}), encoding="utf-8")
+    out = fetch_gnps_network_pairs(TASK, cache_dir=tmp_path)
+    assert out == {"blockData": []}
+
+
+def test_fetch_clusters_empty_task_returns_none():
+    assert fetch_gnps_clusters("") is None
+    assert fetch_gnps_clusters("   ") is None
+
+
+def test_fetch_network_pairs_handles_network_error():
+    class _Err:
+        headers: dict = {}
+        def get(self, *a, **k):
+            raise __import__("requests").RequestException("boom")
+    assert fetch_gnps_network_pairs(TASK, session=_Err(), cache_dir=None) is None
+
+
+def test_fetch_clusters_rejects_non_200():
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            class R:
+                status_code = 503
+                text = ""
+            return R()
+    assert fetch_gnps_clusters(TASK, session=_S(), cache_dir=None) is None
+
+
+def test_fetch_network_pairs_rejects_invalid_json():
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            class R:
+                status_code = 200
+                text = "not json"
+            return R()
+    assert fetch_gnps_network_pairs(TASK, session=_S(), cache_dir=None) is None
+
+
+# --- gnps_task_to_claims views= (v0.7.0) ----------------------------------
+
+def test_high_level_default_views_unchanged_from_v060():
+    """Default views=(annotations,parameters) — no clusters/pairs emitted."""
+    out = gnps_task_to_claims(TASK, annotations_data=ANNOT, parameters_xml=XML,
+                              clusters_data=CLUSTERS, pairs_data=PAIRS,
+                              cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert "has_feature" not in qs
+    assert "structurally_related_to" not in qs
+
+
+def test_high_level_with_clusters_view_adds_has_feature():
+    out = gnps_task_to_claims(
+        TASK, annotations_data=ANNOT, clusters_data=CLUSTERS,
+        views=("annotations", "clusters"), cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert qs == {"spectral_match", "has_feature"}
+
+
+def test_high_level_with_all_views_combines_everything():
+    out = gnps_task_to_claims(
+        TASK, annotations_data=ANNOT, parameters_xml=XML,
+        clusters_data=CLUSTERS, pairs_data=PAIRS,
+        views=("annotations", "parameters", "clusters", "pairs"),
+        cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert qs == {"spectral_match", "has_processing_software",
+                  "acquired_in_mode", "has_feature",
+                  "structurally_related_to"}
 
 
 # --- Live smoke (gated) ----------------------------------------------------

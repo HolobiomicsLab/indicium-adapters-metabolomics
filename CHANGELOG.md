@@ -2,6 +2,58 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] — 2026-05-24
+
+Feature release closing three deferred items from the v0.6.1 follow-up queue:
+GNPS network-view projections, an optional MiniLM matrix-name fuzzy
+normaliser, and a 10× expansion of the tier-2 PubChem synonym layer.
+
+### Added
+- **`parse_gnps_clusters` / `fetch_gnps_clusters`** (GNPS
+  `view_all_clusters_withID_beta`). Projects each cluster row to a
+  `has_feature` claim with `subject=gnps_task:<id>`,
+  `object=gnps_task:<id>:scan:<cluster_index>`, evidence carrying
+  `parent_mass`, `precursor_mz`, `rt_mean`, `rt_stderr`,
+  `precursor_charge`, `num_spectra`, `component_index`,
+  `sum_precursor_intensity`, `num_files`, plus `library_id` / `spectrum_id`
+  / `smiles` when the cluster has a library hit.
+- **`parse_gnps_network_pairs` / `fetch_gnps_network_pairs`** (GNPS
+  `view_network_pairs`). Projects each MN edge to a `structurally_related_to`
+  claim (MetaboKGAdapter vocab — re-used since the qualifier already exists
+  and semantically fits cosine-edge similarity). Edges are *undirected* and
+  canonicalised numerically (`subject<object`) so a downstream graph sees
+  each pair exactly once. Evidence carries `cos_score` and `mz_diff`.
+- **`gnps_task_to_claims(..., views=(...))`** — new `views` kwarg lets
+  callers opt in to the new (potentially large) clusters / pairs views.
+  Defaults preserve v0.6.x behavior (`("annotations","parameters")`).
+- **Optional `[ml]` install extra + `_matrix_normalizer` module** — a
+  MiniLM-based (`sentence-transformers/all-MiniLM-L6-v2`) fuzzy normaliser
+  that maps free-text biological-matrix labels (e.g. `"stool"`, `"leaves"`,
+  `"blood plasma"`) to UBERON / PO CURIEs from the curated seed list at
+  `data/_uberon_terms.json` (~55 terms, biofluid- and metabolomics-focused).
+  Opt in by installing with `pip install indicium-adapters-metabolomics[ml]`
+  and passing `normalize_matrix=True` to `redu_to_claims` /
+  `redu_sample_to_claims`. On a confident hit (cosine ≥ 0.55), the resolved
+  CURIE lands in `ontology_terms.object` and the score in
+  `evidence['matrix_match_score']`. The literal object is preserved for
+  traceability. Default behavior is unchanged when the flag is False or the
+  extra is missing — no silent enrichment, no exception.
+- **PROBE_NAMES extended** from 9 to ~80 priority misses across HMDB
+  blood/urine biomarkers, gut metabolomics + bile acids, NP / polyphenol
+  spelling variants, antibiotic classes, statin/NSAID family, terpenes, and
+  carotenoids. The bundled `_synonyms_tier2.json` grew from **9 to 89
+  entries** (∼10× expansion). Note: PubChem's default CID for "DCA"
+  resolves to dichloroacetic acid, not deoxycholic acid — disambiguated
+  via the explicit acronym key in the tier-1 file if you need the bile acid.
+
+### Changed
+- **`build_synonyms.py` no longer short-circuits via `COMPOUND_INDEX`** —
+  the previous guard `if COMPOUND_INDEX.lookup(name): continue` broke
+  incremental re-runs: once a probe landed in `_synonyms_tier2.json` the
+  next harvest skipped it and the rebuilt tier-2 file lost the entry. The
+  harvester is now fully re-derivable from PROBE_NAMES + cache. Tier-1
+  hand-curated aliases still win at load time (CompoundIndex setdefault).
+
 ## [0.6.1] — 2026-05-24
 
 Patch release driven by an end-to-end live-endpoint smoke test of the v0.6.0

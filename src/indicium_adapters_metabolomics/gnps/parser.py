@@ -1,6 +1,6 @@
 """GNPS ProteoSAFe parsers — result_json + ManageParameters → asb:Claim.
 
-Two pure-projection functions and their HTTP wrappers:
+Pure-projection functions and their HTTP wrappers:
 
 * `parse_gnps_annotations(blockdata, task_id, *, source_doi=None)` —
   consumes the `blockData` list from
@@ -10,8 +10,20 @@ Two pure-projection functions and their HTTP wrappers:
 
 * `parse_gnps_parameters(xml_text, task_id, *, source_doi=None)` —
   consumes the ManageParameters XML. Emits `has_processing_software`
-  (workflow name, canonicalised through the v0.5.0 software registry),
-  `analyzed_with` (tolerances), `acquired_in_mode` (ion mode).
+  (workflow name, canonicalised through the v0.5.0 software registry,
+  tolerances + thresholds folded into evidence) and `acquired_in_mode`
+  (ion mode).
+
+* `parse_gnps_clusters(blockdata, task_id, *, source_doi=None)` —
+  v0.7.0. Consumes `view_all_clusters_withID_beta`. Emits `has_feature`
+  claims (one per cluster), evidence carries parent_mass, RTMean,
+  precursor_charge, component_index, number_of_spectra, library hit
+  metadata when present.
+
+* `parse_gnps_network_pairs(blockdata, task_id, *, source_doi=None)` —
+  v0.7.0. Consumes `view_network_pairs`. Emits `structurally_related_to`
+  claims (one per edge, undirected — only emitted with node1<node2 to
+  avoid duplicates), evidence carries cos_score and mz_diff.
 
 HTTP layer (`fetch_*`) shares the same cache-on-disk + tolerant-failure
 pattern as the ReDU module. Live calls require explicit cache_dir or
@@ -312,33 +324,244 @@ def fetch_gnps_parameters(
     return xml_text
 
 
+# ----------- clusters (view_all_clusters_withID_beta) --------------------
+
+def parse_gnps_clusters(
+    blockdata: list[dict[str, Any]],
+    task_id: str,
+    *,
+    source_doi: str | None = None,
+) -> list[dict[str, Any]]:
+    """Project cluster rows from `view_all_clusters_withID_beta` to claims.
+
+    Per-row mapping (v0.7.0):
+      subject   = "gnps_task:<task_id>"
+      qualifier = "has_feature"                       (MetaboKGAdapter vocab)
+      object    = "gnps_task:<task_id>:scan:<cluster_index>"
+      evidence  = {parent_mass, precursor_mz, rt_mean, rt_stderr,
+                   precursor_charge, num_spectra, component_index,
+                   sum_precursor_intensity, library_id?, spectrum_id?,
+                   smiles?, num_files}
+
+    Rows without a `cluster index` are skipped. `componentindex=-1`
+    (singleton clusters / no networked partner) is preserved in evidence
+    as -1 so downstream consumers can choose to drop them.
+
+    The annotation-relationship (cluster ↔ library hit) lives in
+    :func:`parse_gnps_annotations` — that view is keyed on `#Scan#` which
+    matches `cluster index` here, so the two projections compose into a
+    coherent graph without cross-referencing inside the parser.
+    """
+    out: list[dict[str, Any]] = []
+    subject = f"gnps_task:{task_id}"
+    for row in blockdata or []:
+        cidx = _clean(row.get("cluster index"))
+        if not cidx:
+            continue
+        evidence: dict[str, Any] = {}
+        for src, dst, conv in (
+            ("parent mass",                "parent_mass",             _float_or_none),
+            ("precursor mass",             "precursor_mz",            _float_or_none),
+            ("RTMean",                     "rt_mean",                 _float_or_none),
+            ("RTStdErr",                   "rt_stderr",               _float_or_none),
+            ("precursor charge",           "precursor_charge",        _float_or_none),
+            ("number of spectra",          "num_spectra",             _float_or_none),
+            ("componentindex",             "component_index",         _float_or_none),
+            ("sum(precursor intensity)",   "sum_precursor_intensity", _float_or_none),
+            ("UniqueFileSourcesCount",     "num_files",               _float_or_none),
+            ("LibraryID",                  "library_id",              _clean),
+            ("SpectrumID",                 "spectrum_id",             _clean),
+            ("Smiles",                     "smiles",                  _clean),
+        ):
+            v = conv(row.get(src))
+            if v is not None:
+                evidence[dst] = v
+        out.append(_claim(subject, "has_feature",
+                          f"gnps_task:{task_id}:scan:{cidx}",
+                          evidence=evidence or None,
+                          source_doi=source_doi))
+    return out
+
+
+def fetch_gnps_clusters(
+    task_id: str,
+    *,
+    session: requests.Session | None = None,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+    timeout: float = 60.0,
+) -> dict[str, Any] | None:
+    """GET `result_json.jsp?task=<id>&view=view_all_clusters_withID_beta`.
+
+    Same on-disk cache + tolerant-failure contract as
+    :func:`fetch_gnps_annotations`. Larger default timeout because the
+    clusters view can be 5–10 MB on a full feature-network task.
+    """
+    return _fetch_view(task_id, "view_all_clusters_withID_beta",
+                       session=session, cache_dir=cache_dir, timeout=timeout)
+
+
+# ----------- network pairs (view_network_pairs) --------------------------
+
+def parse_gnps_network_pairs(
+    blockdata: list[dict[str, Any]],
+    task_id: str,
+    *,
+    source_doi: str | None = None,
+) -> list[dict[str, Any]]:
+    """Project network-edge rows from `view_network_pairs` to claims.
+
+    Per-row mapping (v0.7.0):
+      subject   = "gnps_task:<task_id>:scan:<min(Node1,Node2)>"
+      qualifier = "structurally_related_to"           (MetaboKGAdapter vocab)
+      object    = "gnps_task:<task_id>:scan:<max(Node1,Node2)>"
+      evidence  = {cos_score, mz_diff}
+
+    Network pairs are *undirected* — to avoid emitting both (A,B) and
+    (B,A) when a downstream graph would treat them as the same edge,
+    rows are canonicalised so subject < object numerically. Rows with
+    missing Node1/Node2 are skipped.
+    """
+    out: list[dict[str, Any]] = []
+    for row in blockdata or []:
+        n1 = _clean(row.get("Node1"))
+        n2 = _clean(row.get("Node2"))
+        if not n1 or not n2:
+            continue
+        try:
+            lo, hi = sorted((int(n1), int(n2)))
+        except ValueError:
+            # Non-numeric scan IDs — keep as-is, alphabetically ordered.
+            lo, hi = sorted((n1, n2))
+        evidence: dict[str, Any] = {}
+        cos = _float_or_none(row.get("Cos_Score"))
+        if cos is not None:
+            evidence["cos_score"] = cos
+        mzd = _float_or_none(row.get("MzDiff"))
+        if mzd is not None:
+            evidence["mz_diff"] = mzd
+        out.append(_claim(
+            f"gnps_task:{task_id}:scan:{lo}",
+            "structurally_related_to",
+            f"gnps_task:{task_id}:scan:{hi}",
+            evidence=evidence or None,
+            source_doi=source_doi,
+        ))
+    return out
+
+
+def fetch_gnps_network_pairs(
+    task_id: str,
+    *,
+    session: requests.Session | None = None,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+    timeout: float = 30.0,
+) -> dict[str, Any] | None:
+    """GET `result_json.jsp?task=<id>&view=view_network_pairs`."""
+    return _fetch_view(task_id, "view_network_pairs",
+                       session=session, cache_dir=cache_dir, timeout=timeout)
+
+
+# ----------- shared view fetcher (clusters + pairs) ----------------------
+
+def _fetch_view(
+    task_id: str,
+    view: str,
+    *,
+    session: requests.Session | None,
+    cache_dir: Path | str | None,
+    timeout: float,
+) -> dict[str, Any] | None:
+    """Shared `result_json.jsp` fetcher for views beyond annotations."""
+    if not task_id or not task_id.strip():
+        return None
+    cache_path: Path | None = None
+    if cache_dir is not None:
+        cache_path = _cache_path((task_id, view), Path(cache_dir))
+        if cache_path.exists():
+            try:
+                return json.loads(cache_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+
+    sess = session or requests.Session()
+    sess.headers.setdefault("User-Agent", USER_AGENT)
+    try:
+        r = sess.get(GNPS_RESULT_JSON_URL,
+                     params={"task": task_id, "view": view},
+                     timeout=timeout)
+    except requests.RequestException:
+        return None
+    if r.status_code != 200:
+        return None
+    try:
+        data = json.loads(r.text)
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return data
+
+
 # ----------- high-level convenience --------------------------------------
+
+# View IDs accepted by gnps_task_to_claims `views=` kwarg.
+GNPS_VIEW_ANNOTATIONS = "annotations"
+GNPS_VIEW_PARAMETERS = "parameters"
+GNPS_VIEW_CLUSTERS = "clusters"
+GNPS_VIEW_PAIRS = "pairs"
+
 
 def gnps_task_to_claims(
     task_id: str,
     *,
     source_doi: str | None = None,
+    views: tuple[str, ...] = (GNPS_VIEW_ANNOTATIONS, GNPS_VIEW_PARAMETERS),
     annotations_data: dict[str, Any] | None = None,
     parameters_xml: str | None = None,
+    clusters_data: dict[str, Any] | None = None,
+    pairs_data: dict[str, Any] | None = None,
     session: requests.Session | None = None,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
 ) -> list[dict[str, Any]]:
-    """One call → both projections.
+    """One call → multiple projections.
 
-    Pass `annotations_data=<dict>` and/or `parameters_xml=<str>` to bypass
-    the HTTP layer (useful for offline tests and pre-fetched data).
+    Default `views=("annotations","parameters")` preserves v0.6.x behavior.
+    Pass `views=("annotations","parameters","clusters","pairs")` to also
+    pull the (potentially large) network-view projections introduced in
+    v0.7.0. Each view can also be supplied pre-fetched via the
+    `*_data` / `parameters_xml` kwargs to bypass HTTP for tests.
     """
     claims: list[dict[str, Any]] = []
-    if annotations_data is None:
-        annotations_data = fetch_gnps_annotations(task_id, session=session,
+    if GNPS_VIEW_ANNOTATIONS in views:
+        if annotations_data is None:
+            annotations_data = fetch_gnps_annotations(task_id, session=session,
+                                                      cache_dir=cache_dir)
+        if annotations_data:
+            claims.extend(parse_gnps_annotations(annotations_data.get("blockData") or [],
+                                                 task_id, source_doi=source_doi))
+    if GNPS_VIEW_PARAMETERS in views:
+        if parameters_xml is None:
+            parameters_xml = fetch_gnps_parameters(task_id, session=session,
+                                                   cache_dir=cache_dir)
+        if parameters_xml:
+            claims.extend(parse_gnps_parameters(parameters_xml, task_id,
+                                                source_doi=source_doi))
+    if GNPS_VIEW_CLUSTERS in views:
+        if clusters_data is None:
+            clusters_data = fetch_gnps_clusters(task_id, session=session,
+                                                cache_dir=cache_dir)
+        if clusters_data:
+            claims.extend(parse_gnps_clusters(clusters_data.get("blockData") or [],
+                                              task_id, source_doi=source_doi))
+    if GNPS_VIEW_PAIRS in views:
+        if pairs_data is None:
+            pairs_data = fetch_gnps_network_pairs(task_id, session=session,
                                                   cache_dir=cache_dir)
-    if annotations_data:
-        claims.extend(parse_gnps_annotations(annotations_data.get("blockData") or [],
-                                             task_id, source_doi=source_doi))
-    if parameters_xml is None:
-        parameters_xml = fetch_gnps_parameters(task_id, session=session,
-                                               cache_dir=cache_dir)
-    if parameters_xml:
-        claims.extend(parse_gnps_parameters(parameters_xml, task_id,
-                                            source_doi=source_doi))
+        if pairs_data:
+            claims.extend(parse_gnps_network_pairs(pairs_data.get("blockData") or [],
+                                                   task_id, source_doi=source_doi))
     return claims

@@ -1,0 +1,52 @@
+{
+  "blockData": [
+    {
+      "Node1": "2",
+      "Node2": "773",
+      "MzDiff": "-203.353",
+      "Cos_Score": "0.6851",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "0"
+    },
+    {
+      "Node1": "3",
+      "Node2": "319",
+      "MzDiff": "-96.000",
+      "Cos_Score": "0.7293",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "1"
+    },
+    {
+      "Node1": "4",
+      "Node2": "50",
+      "MzDiff": "-15.641",
+      "Cos_Score": "0.7747",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "2"
+    },
+    {
+      "Node1": "8",
+      "Node2": "108",
+      "MzDiff": "-33.981",
+      "Cos_Score": "0.6906",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "3"
+    },
+    {
+      "Node1": "8",
+      "Node2": "240",
+      "MzDiff": "-73.001",
+      "Cos_Score": "0.6719",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "4"
+    },
+    {
+      "Node1": "8",
+      "Node2": "48",
+      "MzDiff": "-14.011",
+      "Cos_Score": "0.6573",
+      "FileName": "spectra/specs_ms.pklbin",
+      "id": "5"
+    }
+  ]
+}
