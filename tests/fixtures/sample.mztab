@@ -1,0 +1,22 @@
+COM	Minimal mzTab-M 2.0 fixture for indicium-adapters-metabolomics tests
+MTD	mzTab-version	2.0.0-M
+MTD	mzTab-ID	indicium-test-1
+MTD	software[1]	[MS, MS:1003049, indicium-fixture, ]
+MTD	study_variable[1]	control
+MTD	study_variable[1]-description	control samples
+MTD	study_variable[1]-assay_refs	assay[1]
+MTD	assay[1]	assay 1
+MTD	assay[1]-ms_run_ref	ms_run[1]
+MTD	ms_run[1]-location	file:///fixture.mzML
+MTD	ms_run[1]-format	[MS, MS:1000584, mzML file, ]
+MTD	ms_run[1]-id_format	[MS, MS:1001530, mzML unique identifier, ]
+MTD	quantification_method	[MS, MS:1002019, label-free raw feature quantitation, ]
+MTD	small_molecule-quantification_unit	[MS, MS:1000043, intensity, ]
+MTD	small_molecule_feature-quantification_unit	[MS, MS:1000043, intensity, ]
+MTD	small_molecule_identification_reliability	[MS, MS:1002896, compound identification confidence level, ]
+
+SMH	SML_ID	SMF_ID_REFS	database_identifier	chemical_formula	smiles	inchi	chemical_name	uri	theoretical_neutral_mass	adduct_ions	reliability	best_id_confidence_measure	best_id_confidence_value	abundance_assay[1]
+SML	1	1	CHEBI:17234	C6H12O6	OC1OC(CO)C(O)C(O)C1O	InChI=1S/C6H12O6/c7-1-2-3(8)4(9)5(10)6(11)12-2/h2-11H,1H2/t2-,3-,4+,5-,6?/m1/s1	D-Glucose	https://www.metabolomicsworkbench.org/databases/refmet/refmet_details.php?REFMET_name=D-Glucose	180.063388116	[M+H]1+	2	[MS, MS:1002890, fragmentation score, ]	0.95	100000.0
+
+SFH	SMF_ID	SME_ID_REFS	SME_ID_REF_ambiguity_code	adduct_ion	isotopomer	exp_mass_to_charge	charge	retention_time_in_seconds	abundance_assay[1]
+SMF	1	1	null	[M+H]1+	null	181.07	1	350.5	100000.0
