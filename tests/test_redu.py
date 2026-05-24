@@ -28,9 +28,11 @@ from indicium_adapters_metabolomics.redu import (
     redu_to_claims,
 )
 from indicium_adapters_metabolomics.redu.parser import (
+    REDU_GH_LIST_URL,
     REDU_GH_TSV_URL,
     _msv_and_relpath,
     _row_for_filename,
+    list_redu_msvs,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -327,6 +329,72 @@ def test_redu_url_constant_uses_main_branch():
     """Sanity: the URL template still points at `main`. If a tagged release
     of ReDU_metadata appears, this test will catch any drift."""
     assert "ReDU_metadata/main/metadata" in REDU_GH_TSV_URL
+
+
+# --- list_redu_msvs (v0.6.1 coverage helper) ------------------------------
+
+class _StubListSession:
+    """In-memory GitHub Contents API stub."""
+    def __init__(self, body, status: int = 200):
+        self.body = body
+        self.status = status
+        self.calls: list[str] = []
+        self.headers: dict[str, str] = {}
+
+    def get(self, url, *, timeout: float = 0):  # noqa: ANN201
+        self.calls.append(url)
+        outer = self
+        class R:
+            status_code = outer.status
+            def json(self):  # noqa: ANN201
+                return outer.body
+        return R()
+
+
+def test_list_redu_msvs_returns_sorted_msvs(tmp_path):
+    body = [
+        {"name": "MSV000080627.tsv", "type": "file"},
+        {"name": "MSV000079777.tsv", "type": "file"},
+        {"name": "README.md",        "type": "file"},
+        {"name": "subdir",           "type": "dir"},
+    ]
+    sess = _StubListSession(body)
+    out = list_redu_msvs(session=sess, cache_dir=tmp_path)
+    assert out == ["MSV000079777", "MSV000080627"]
+    assert REDU_GH_LIST_URL in sess.calls[0]
+
+
+def test_list_redu_msvs_cached(tmp_path):
+    sess = _StubListSession([{"name": "MSV000079777.tsv", "type": "file"}])
+    a = list_redu_msvs(session=sess, cache_dir=tmp_path)
+    b = list_redu_msvs(session=sess, cache_dir=tmp_path)
+    assert a == b == ["MSV000079777"]
+    assert len(sess.calls) == 1
+
+
+def test_list_redu_msvs_network_error_returns_none():
+    class _ErrSess:
+        headers: dict = {}
+        def get(self, *a, **k):
+            raise __import__("requests").RequestException("boom")
+    assert list_redu_msvs(session=_ErrSess(), cache_dir=None) is None
+
+
+def test_list_redu_msvs_non_200_returns_none(tmp_path):
+    sess = _StubListSession(None, status=500)
+    assert list_redu_msvs(session=sess, cache_dir=tmp_path) is None
+
+
+def test_list_redu_msvs_invalid_json_returns_none(tmp_path):
+    class _BadJson:
+        status_code = 200
+        def json(self):  # noqa: ANN201
+            raise ValueError("not json")
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            return _BadJson()
+    assert list_redu_msvs(session=_S(), cache_dir=tmp_path) is None
 
 
 # --- Live smoke (gated) ----------------------------------------------------

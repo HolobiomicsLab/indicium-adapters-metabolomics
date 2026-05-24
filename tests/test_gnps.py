@@ -85,12 +85,14 @@ def test_annotation_source_doi_passthrough():
 
 # --- parse_gnps_parameters -------------------------------------------------
 
-def test_parameters_emits_workflow_tolerances_and_ion_mode():
+def test_parameters_emits_workflow_and_ion_mode():
+    """v0.6.1: parameters projection no longer emits standalone analyzed_with;
+    tolerances live in has_processing_software evidence instead."""
     claims = parse_gnps_parameters(XML, TASK)
     by_q = {c["qualifier"]: c for c in claims}
     assert "has_processing_software" in by_q
-    assert "analyzed_with" in by_q
     assert "acquired_in_mode" in by_q
+    assert "analyzed_with" not in by_q
 
 
 def test_parameters_workflow_maps_to_canonical_label():
@@ -101,12 +103,23 @@ def test_parameters_workflow_maps_to_canonical_label():
     assert sw["evidence"]["gnps_workflow"] == "METABOLOMICS-SNETS-V2"
 
 
-def test_parameters_tolerances_concatenated_into_analyzed_with():
+def test_parameters_tolerances_in_software_evidence():
+    """v0.6.1: tolerances + thresholds are structured keys in `evidence` of
+    has_processing_software, not a concatenated `analyzed_with` literal."""
     claims = parse_gnps_parameters(XML, TASK)
-    a = next(c for c in claims if c["qualifier"] == "analyzed_with")
-    assert "tolerance.PM_tolerance=2.0" in a["object"]
-    assert "tolerance.Ion_tolerance=0.5" in a["object"]
-    assert "MIN_MATCHED_PEAKS=6" in a["object"]
+    sw = next(c for c in claims if c["qualifier"] == "has_processing_software")
+    ev = sw["evidence"]
+    assert ev["tolerance.PM_tolerance"] == "2.0"
+    assert ev["tolerance.Ion_tolerance"] == "0.5"
+    assert ev["MIN_MATCHED_PEAKS"] == "6"
+
+
+def test_parameters_workflow_only_no_tolerances_means_workflow_only_evidence():
+    """If only workflow is set, evidence has just gnps_workflow (no leak)."""
+    xml = '<parameters><parameter name="workflow">METABOLOMICS-SNETS-V2</parameter></parameters>'
+    claims = parse_gnps_parameters(xml, TASK)
+    sw = next(c for c in claims if c["qualifier"] == "has_processing_software")
+    assert sw["evidence"] == {"gnps_workflow": "METABOLOMICS-SNETS-V2"}
 
 
 def test_parameters_ion_mode_lowercased():
@@ -228,11 +241,12 @@ def test_fetch_parameters_rejects_non_200():
 # --- gnps_task_to_claims (high-level combiner) -----------------------------
 
 def test_high_level_combines_annotations_and_parameters():
+    """v0.6.1: combined qualifier set no longer includes analyzed_with."""
     out = gnps_task_to_claims(TASK, annotations_data=ANNOT, parameters_xml=XML,
                               cache_dir=None)
     qs = {c["qualifier"] for c in out}
     assert qs == {"spectral_match", "has_processing_software",
-                  "analyzed_with", "acquired_in_mode"}
+                  "acquired_in_mode"}
 
 
 def test_high_level_skips_parameters_when_xml_empty():

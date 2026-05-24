@@ -210,11 +210,20 @@ def parse_gnps_parameters(
     """Project a ManageParameters XML document to study-level claims.
 
     Field → qualifier mapping:
-      workflow             → has_processing_software (canonicalised)
-      tolerance.PM_tolerance, tolerance.Ion_tolerance, MIN_MATCHED_PEAKS,
-        SCORE_THRESHOLD, PAIRS_MIN_COSINE
-                           → analyzed_with (concatenated literal)
+      workflow             → has_processing_software (canonicalised label,
+                              tolerances + thresholds folded into `evidence`)
       ion_mode             → acquired_in_mode (literal: positive/negative)
+
+    v0.6.1: tolerances and thresholds (PM_tolerance, Ion_tolerance,
+    MIN_MATCHED_PEAKS, SCORE_THRESHOLD, PAIRS_MIN_COSINE) used to be emitted
+    as one concatenated `analyzed_with` literal — that wasn't useful
+    downstream (the qualifier is for the analysis tool/instrument, not a
+    parameter blob). They now live in `evidence` on `has_processing_software`
+    with structured keys, e.g.:
+
+        evidence={"gnps_workflow": "METABOLOMICS-SNETS-V2",
+                  "tolerance.PM_tolerance": "2.0",
+                  "MIN_MATCHED_PEAKS": "6", ...}
 
     Returns [] on XML parse failure rather than raising, so a malformed
     response doesn't crash a bulk projection job.
@@ -239,29 +248,24 @@ def parse_gnps_parameters(
     subject = f"gnps_task:{task_id}"
     out: list[dict[str, Any]] = []
 
-    # 1. workflow → has_processing_software
+    # 1. workflow → has_processing_software (tolerances + thresholds in evidence)
     workflow = first("workflow")
     if workflow:
         label = (_GNPS_WORKFLOW_LABELS.get(workflow.upper())
                  or canonical_software_name("GNPS")
                  or "GNPS")
-        # Always tag the underlying workflow ID in evidence for traceability.
+        evidence: dict[str, Any] = {"gnps_workflow": workflow}
+        for key in ("tolerance.PM_tolerance", "tolerance.Ion_tolerance",
+                    "MIN_MATCHED_PEAKS", "SCORE_THRESHOLD",
+                    "PAIRS_MIN_COSINE"):
+            v = first(key)
+            if v:
+                evidence[key] = v
         out.append(_claim(subject, "has_processing_software", label,
-                          evidence={"gnps_workflow": workflow},
+                          evidence=evidence,
                           source_doi=source_doi))
 
-    # 2. tolerances + thresholds → analyzed_with (concatenated literal)
-    tol_parts: list[str] = []
-    for key in ("tolerance.PM_tolerance", "tolerance.Ion_tolerance",
-                "MIN_MATCHED_PEAKS", "SCORE_THRESHOLD", "PAIRS_MIN_COSINE"):
-        v = first(key)
-        if v:
-            tol_parts.append(f"{key}={v}")
-    if tol_parts:
-        out.append(_claim(subject, "analyzed_with", "; ".join(tol_parts),
-                          source_doi=source_doi))
-
-    # 3. ion_mode → acquired_in_mode (literal positive/negative)
+    # 2. ion_mode → acquired_in_mode (literal positive/negative)
     ion = first("ion_mode")
     if ion:
         out.append(_claim(subject, "acquired_in_mode", ion.lower(),

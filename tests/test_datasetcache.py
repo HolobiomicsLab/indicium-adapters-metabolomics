@@ -37,16 +37,38 @@ def test_projects_instrument_model_to_analyzed_with():
     assert a["evidence"]["instrument_vendor"] == "Thermo Fisher Scientific"
 
 
-def test_projects_mass_analyzer():
+def test_projects_mass_analyzer_split_on_semicolon():
+    """v0.6.1: 'orbitrap;quadrupole' yields TWO claims, not one literal."""
     claims = datasetcache_row_to_claims(ROW, STUDY)
-    m = next(c for c in claims if c["qualifier"] == "uses_mass_analyzer")
-    assert m["object"] == "orbitrap;quadrupole"
+    analyzers = [c["object"] for c in claims if c["qualifier"] == "uses_mass_analyzer"]
+    assert analyzers == ["orbitrap", "quadrupole"]
 
 
-def test_projects_ionisation_to_acquired_in_mode():
+def test_projects_ionisation_split_on_semicolon():
+    """v0.6.1: 'electrospray inlet;electrospray ionization' yields TWO claims."""
     claims = datasetcache_row_to_claims(ROW, STUDY)
-    i = next(c for c in claims if c["qualifier"] == "acquired_in_mode")
-    assert i["object"] == "electrospray inlet;electrospray ionization"
+    ions = [c["object"] for c in claims if c["qualifier"] == "acquired_in_mode"]
+    assert ions == ["electrospray inlet", "electrospray ionization"]
+
+
+def test_single_valued_mass_analyzer_yields_one_claim():
+    row = dict(ROW)
+    row["MassAnalyzer"] = "orbitrap"
+    row["Ionization"] = ""
+    claims = datasetcache_row_to_claims(row, STUDY)
+    analyzers = [c for c in claims if c["qualifier"] == "uses_mass_analyzer"]
+    assert len(analyzers) == 1
+    assert analyzers[0]["object"] == "orbitrap"
+
+
+def test_semicolon_split_dedups_and_drops_empty_parts():
+    """Tolerates accidental ';;', whitespace, and case-duplicates."""
+    row = dict(ROW)
+    row["MassAnalyzer"] = " orbitrap ; ; Orbitrap;quadrupole "
+    row["Ionization"] = ""
+    claims = datasetcache_row_to_claims(row, STUDY)
+    analyzers = [c["object"] for c in claims if c["qualifier"] == "uses_mass_analyzer"]
+    assert analyzers == ["orbitrap", "quadrupole"]  # case-insensitive dedup, first wins
 
 
 def test_operational_sample_type_gnps_is_not_a_matrix():
@@ -202,6 +224,9 @@ def test_to_claims_via_row_kwarg_skips_http():
     assert {c["qualifier"] for c in out} == {"analyzed_with",
                                               "uses_mass_analyzer",
                                               "acquired_in_mode"}
+    # v0.6.1: post-split, MSV000082048 fixture yields exactly 5 claims:
+    # 1 analyzed_with + 2 uses_mass_analyzer + 2 acquired_in_mode.
+    assert len(out) == 5
     assert sess.calls == []
 
 
