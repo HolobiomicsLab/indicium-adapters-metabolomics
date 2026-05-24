@@ -13,6 +13,22 @@ import rdflib
 
 from indicium_adapters_metabolomics._enrichment import COMPOUND_INDEX
 from indicium_adapters_metabolomics._namespaces import METABOLOMICS_PREFIXES
+from indicium_adapters_metabolomics._registries import (
+    accession_to_curie,
+    canonical_software_name,
+    is_ignored_tool_name,
+    is_metabolomics_database,
+    is_metabolomics_tool,
+)
+
+__all__ = [
+    "MetabolomicsAdapter",
+    "accession_to_curie",
+    "canonical_software_name",
+    "is_ignored_tool_name",
+    "is_metabolomics_database",
+    "is_metabolomics_tool",
+]
 
 # Priority order when multiple CURIEs are available for the same compound.
 _PRINCIPAL_CURIE_ORDER: Final[tuple[str, ...]] = ("chebi", "hmdb", "pubchem")
@@ -55,6 +71,19 @@ class MetabolomicsAdapter:
         "acquired_in_mode",
         "chromatographed_on",
         "uses_mass_analyzer",
+        # v0.5.0 — three more study/paper-level qualifiers driven by audit 2:
+        #   `uses_database`         — separates reference DBs (ChEBI, HMDB,
+        #                              MetaboLights, GNPS-LIBRARIES) from
+        #                              processing software.
+        #   `acquired_from_matrix`  — sample-type / biological matrix
+        #                              (urine, serum, feces, plant leaf, soil).
+        #   `consolidates_dataset`  — paper → repository accession when one
+        #                              publication unifies multiple datasets
+        #                              (e.g. a meta-analysis aggregating 15
+        #                              MSV deposits).
+        "uses_database",
+        "acquired_from_matrix",
+        "consolidates_dataset",
     })
 
     ontology_prefixes: dict[str, str] = METABOLOMICS_PREFIXES
@@ -65,14 +94,17 @@ class MetabolomicsAdapter:
             "identifies, quantifies, is_biomarker_for, discriminates_between, "
             "metabolizes, co_occurs_with, found_in_organism, found_in_environment, "
             "has_processing_software, analyzed_with, acquired_in_mode, "
-            "chromatographed_on, uses_mass_analyzer. "
+            "chromatographed_on, uses_mass_analyzer, uses_database, "
+            "acquired_from_matrix, consolidates_dataset. "
             "Use canonical compound names (RefMet-compatible, CHEBI-compatible) "
             "for metabolite subjects and objects where possible. "
             "Study-level qualifiers (has_processing_software, analyzed_with, "
-            "acquired_in_mode, chromatographed_on, uses_mass_analyzer) take a "
-            "study/capsule ID as subject and a tool / instrument / mode literal "
-            "as object (e.g. 'MZmine', 'Q-Exactive HF', 'positive', "
-            "'C18 reverse-phase', 'Orbitrap')."
+            "acquired_in_mode, chromatographed_on, uses_mass_analyzer, "
+            "uses_database, acquired_from_matrix, consolidates_dataset) take a "
+            "study/capsule/paper ID as subject and a tool / instrument / mode / "
+            "database / matrix / accession literal as object (e.g. 'MZmine', "
+            "'Q-Exactive HF', 'positive', 'C18 reverse-phase', 'Orbitrap', "
+            "'ChEBI', 'serum', 'MSV:MSV000088235')."
         )
 
     def enrich_claim(self, claim: dict) -> dict:

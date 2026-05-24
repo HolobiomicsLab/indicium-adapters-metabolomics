@@ -53,6 +53,13 @@ The roadmap below leans heavily on quadrants 1–3. New PRs should justify thems
 
 See CHANGELOG.md.
 
+## v0.5.0 — RELEASED 2026-05-24 (audit-2 follow-up)
+
+See CHANGELOG.md. Closes 5 of 7 actionable audit-2 findings (6a software
+registry, 6b `uses_database`, 6c ignore-list, 6d accession→CURIE helper,
+6e `acquired_from_matrix` qualifier, 6h `consolidates_dataset` qualifier).
+Two items deferred to v0.6.0 (see candidates below).
+
 ## v0.4.0 — RELEASED 2026-05-24 (deferred audit items)
 
 See CHANGELOG.md. Closes the three items the v0.3.1 release deferred:
@@ -78,6 +85,30 @@ Done items from the v0.3.0 candidate list:
 - **Wikidata top-organisms sitelink ranking**: 53-species curated lookup (via
   P225 taxon name, two batches) + broad P31=Q16521 LIMIT 400 supplement.
   460 organisms with canonical QIDs.
+
+## v0.6.0 candidates — deferred fuzzy/ML items from audit-2
+
+These two audit-2 follow-ups did not ship in v0.5.0 because each needs a
+dependency or design call that doesn't belong in a deterministic adapter
+sprint. Both are tracked for v0.6.0:
+
+- **Matrix-name fuzzy normalisation** (audit-2 finding 6e tier-2). The
+  `acquired_from_matrix` qualifier ships in v0.5.0; the matrix-vocabulary
+  itself does not. Sample matrices have heavy synonym tails ("feces" / "stool"
+  / "fecal" / "poo"; "blood" / "plasma" / "serum" / "whole blood"; "leaf" /
+  "leaves" / "foliage") where a sentence-transformer (e.g. `all-MiniLM-L6-v2`,
+  22 MB) over a curated canonical list outperforms an ever-growing JSON.
+  Decision needed: ship behind a `[ml]` extra so the wheel stays light, or
+  emit a separate `indicium-adapters-metabolomics-matrices` package.
+- **Tier-2 compound-synonym expansion via PubChem PUG-REST**. Audit-2 measured
+  the synonym layer at 65% (gut metabolomics) / 71% (phenolics) / 76%
+  (natural-product drugs). The hand-curated `_synonyms.json` (now 53 entries
+  after v0.5.0) won't scale further. Plan: extend `build_data.py` with a
+  PubChem fetcher that calls `/compound/name/<name>/synonyms/JSON` and
+  `/compound/name/<name>/cids/JSON` for the highest-priority misses, caches
+  to `_synonyms_cache.json` (gitignored), and writes a tier-2 JSON shipped
+  with the wheel. Same offline-at-runtime constraint as the existing RefMet
+  layer.
 
 ## v0.5.0 candidates (carried forward from v0.4.0)
 
