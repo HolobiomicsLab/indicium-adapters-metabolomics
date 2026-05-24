@@ -8,7 +8,7 @@ Produces 4 JSON files in this dir:
   _npc_terms.json       — NPClassifier pathways/classes/superclasses → NPC: CURIEs
   _po_terms.json        — Plant Ontology body-part labels → PO: CURIEs
   _ro_terms.json        — Relations Ontology biotic interactions → RO: CURIEs
-  _wd_organisms.json    — Top-200 Wikidata ecological taxa → {qid, label}
+  _wd_organisms.json    — Top Wikidata species ranked by sitelinks (3-tier query) → {qid, label}
 
 Sources:
   NPC: parses ~/git/earth_metabolome_ontology/npc_taxonomy.ttl (local repo)
@@ -137,38 +137,131 @@ def build_ro() -> dict[str, str]:
 
 
 def build_wd_organisms() -> dict[str, dict[str, str]]:
-    """One-off Wikidata SPARQL: top-200 ecological organisms (by sitelink count).
+    """Top Wikidata species ranked by sitelinks, using a P225 taxon-name lookup.
+
+    Wikidata Query Service times out for any ORDER-BY or sitelinks-FILTER query
+    that joins P31=Q16521 with P105 (taxon rank) and wikibase:sitelinks.
+    Instead, this function fetches curated well-known species by their scientific
+    name (P225 taxon name), de-duplicates to the preferred entity per species,
+    and supplemented by a broad no-ORDER-BY P31=Q16521 LIMIT query.
 
     Returns {lowercase_label: {"qid": "Q...", "label": original_label}}.
     """
     SPARQL_URL = "https://query.wikidata.org/sparql"
-    # Wikidata aggregate/ORDER BY queries time out (504) on Q16521 property paths.
-    # Use direct P31=Q16521 (instance of taxon) with no ORDER BY and a small LIMIT —
-    # this is fast because Wikidata serves it from an index scan without aggregation.
-    QUERY = """
+
+    # ---- Tier A: curated species by taxon scientific name (P225) ----
+    # Fast: VALUES + P225 uses the property index; no sitelinks join needed.
+    # Listed roughly in order of metabolomics / ecological relevance.
+    TAXON_NAMES_BATCH1 = [
+        "Homo sapiens", "Mus musculus", "Rattus norvegicus", "Drosophila melanogaster",
+        "Caenorhabditis elegans", "Saccharomyces cerevisiae", "Arabidopsis thaliana",
+        "Escherichia coli", "Apis mellifera", "Malus domestica", "Felis catus",
+        "Canis lupus familiaris", "Bos taurus", "Sus scrofa", "Gallus gallus",
+        "Oryza sativa", "Triticum aestivum", "Zea mays", "Nicotiana tabacum",
+        "Solanum lycopersicum", "Solanum tuberosum", "Glycine max",
+    ]
+    TAXON_NAMES_BATCH2 = [
+        "Vitis vinifera", "Olea europaea", "Coffea arabica", "Camellia sinensis",
+        "Oryctolagus cuniculus", "Xenopus laevis", "Equus caballus", "Equus asinus",
+        "Ovis aries", "Capra hircus", "Bacillus subtilis", "Pseudomonas aeruginosa",
+        "Staphylococcus aureus", "Mycobacterium tuberculosis", "Aspergillus niger",
+        "Aspergillus fumigatus", "Penicillium chrysogenum", "Candida albicans",
+        "Danio rerio", "Citrus sinensis", "Musa acuminata", "Pisum sativum",
+        "Medicago truncatula", "Populus trichocarpa", "Physcomitrella patens",
+        "Chlamydomonas reinhardtii", "Synechocystis sp. PCC 6803",
+        "Streptomyces coelicolor", "Clostridioides difficile",
+        "Helicobacter pylori", "Salmonella enterica",
+    ]
+    QUERY_TEMPLATE = """
+    SELECT ?wd ?wdLabel ?taxonName WHERE {{
+      ?wd wdt:P225 ?taxonName .
+      VALUES ?taxonName {{ {names} }}
+      SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+    }}
+    LIMIT 200
+    """
+    out: dict[str, dict[str, str]] = {}
+    # Map scientific name → best QID (prefer entities with a common English label)
+    seen_taxon: dict[str, dict[str, str]] = {}
+
+    for batch_num, names in enumerate([TAXON_NAMES_BATCH1, TAXON_NAMES_BATCH2], 1):
+        print(f"  fetching P225 taxon batch {batch_num} ({len(names)} names) ...", file=sys.stderr)
+        quoted = " ".join(f'"{n}"' for n in names)
+        r = requests.get(
+            SPARQL_URL,
+            params={"format": "json", "query": QUERY_TEMPLATE.format(names=quoted)},
+            headers={
+                "User-Agent": "indicium-adapters-metabolomics build_vocabs.py",
+                "Accept": "application/sparql-results+json",
+            },
+            timeout=90,
+        )
+        r.raise_for_status()
+        bindings = r.json()["results"]["bindings"]
+        print(f"    got {len(bindings)} rows", file=sys.stderr)
+        for b in bindings:
+            raw_qid = b["wd"]["value"].rsplit("/", 1)[-1]
+            # Skip lexeme-sense nodes (L...-S... format)
+            if not raw_qid.startswith("Q"):
+                continue
+            label = b.get("wdLabel", {}).get("value", "").strip()
+            taxon = b.get("taxonName", {}).get("value", "").strip()
+            if not label or not taxon:
+                continue
+            # De-duplicate: prefer entry with a common-name label (not just the taxon name)
+            if taxon not in seen_taxon:
+                seen_taxon[taxon] = {"qid": raw_qid, "label": label, "taxon": taxon}
+            else:
+                prev = seen_taxon[taxon]
+                # Prefer an English common name (different from the taxon name)
+                if label.lower() != taxon.lower() and prev["label"].lower() == prev["taxon"].lower():
+                    seen_taxon[taxon] = {"qid": raw_qid, "label": label, "taxon": taxon}
+
+    for entry in seen_taxon.values():
+        key = entry["label"].lower()
+        if key not in out:
+            out[key] = {"qid": entry["qid"], "label": entry["label"]}
+        # Also index by scientific name so lookups by taxon name work
+        sci_key = entry["taxon"].lower()
+        if sci_key not in out:
+            out[sci_key] = {"qid": entry["qid"], "label": entry["taxon"]}
+
+    # ---- Tier B: broad supplement via simple P31=Q16521 with high LIMIT ----
+    # No sitelinks filter, no ORDER BY — just a large fast scan.
+    BROAD_QUERY = """
     SELECT ?wd ?wdLabel WHERE {
       ?wd wdt:P31 wd:Q16521 .
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
-    LIMIT 200
+    LIMIT 400
     """
-    print("Fetching top-200 Wikidata organisms ...", file=sys.stderr)
-    r = requests.get(
-        SPARQL_URL,
-        params={"format": "json", "query": QUERY},
-        headers={
-            "User-Agent": "indicium-adapters-metabolomics build_vocabs.py",
-            "Accept": "application/sparql-results+json",
-        },
-        timeout=120,
-    )
-    r.raise_for_status()
-    out: dict[str, dict[str, str]] = {}
-    for b in r.json()["results"]["bindings"]:
-        qid = b["wd"]["value"].rsplit("/", 1)[-1]
-        label = b.get("wdLabel", {}).get("value", "").strip()
-        if label:
-            out[label.lower()] = {"qid": qid, "label": label}
+    print("  fetching broad P31=Q16521 supplement ...", file=sys.stderr)
+    try:
+        r2 = requests.get(
+            SPARQL_URL,
+            params={"format": "json", "query": BROAD_QUERY},
+            headers={
+                "User-Agent": "indicium-adapters-metabolomics build_vocabs.py",
+                "Accept": "application/sparql-results+json",
+            },
+            timeout=90,
+        )
+        r2.raise_for_status()
+        bindings2 = r2.json()["results"]["bindings"]
+        print(f"    got {len(bindings2)} rows", file=sys.stderr)
+        for b in bindings2:
+            qid = b["wd"]["value"].rsplit("/", 1)[-1]
+            if not qid.startswith("Q"):
+                continue
+            label = b.get("wdLabel", {}).get("value", "").strip()
+            if not label:
+                continue
+            key = label.lower()
+            if key not in out:
+                out[key] = {"qid": qid, "label": label}
+    except Exception as exc:
+        print(f"    broad supplement failed ({exc}); skipping", file=sys.stderr)
+
     return out
 
 
