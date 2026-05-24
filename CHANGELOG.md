@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] — 2026-05-24
+
+Audit-2 follow-up. A second live audit (3 fresh ASB heuristic builds: Haffner
+gut metabolomics, Jeong plant phenolic glycosides, Helena actinomycete natural
+products) validated v0.4.0 (5 new qualifiers project 26 real claims; SHACL
+teeth catch 2/2 broken claims; MSV URL matches ASB output) and surfaced 8 new
+limitations. This release lands the deterministic fixes (5 of 7 actionable
+items); the two fuzzy/external-API items are deferred with design notes.
+
+### Added
+- **3 study/paper-level qualifiers** on `MetabolomicsAdapter`:
+  `uses_database`, `acquired_from_matrix`, `consolidates_dataset`.
+  Separates ChEBI/HMDB/KEGG (reference databases) from MS-DIAL/MZmine
+  (processing software) per audit finding 6b; captures biological matrix
+  (urine/serum/feces/leaf) per 6e; captures paper→multi-MSV consolidation
+  per 6h. Qualifier count: Metabolomics 13 → 16; composed union 33 → 36.
+- **`data/_software_registry.json`** with 35 software canonical-name aliases
+  (MS-DIAL/MSDIAL/MS DIAL → MS-DIAL, MZmine/mzmine 3 → MZmine, GNPS/gnps2 →
+  GNPS, CSI:FingerID → SIRIUS, …), 36 reference-database names
+  (ChEBI/HMDB/KEGG/PubChem/MetaboLights/MassIVE/GNPS-LIBRARIES/…), and 21
+  general-purpose names to ignore (Python/R/Jupyter/GitHub/Docker/pandas/…).
+  Closes audit findings 6a (canonical software names) and 6c (language /
+  runtime / repo-host ignore-list).
+- **`_registries.py` helpers re-exported at package top level:**
+  - `canonical_software_name(name)` → canonical spelling or None
+  - `is_metabolomics_tool(name)` / `is_metabolomics_database(name)` /
+    `is_ignored_tool_name(name)` — disjoint bucket classifiers for ASB's
+    free-text `tools` lists
+  - `accession_to_curie(name)` — bare repository accession → CURIE
+    (`ST002320` → `MW:ST002320`, `MSV000088235` → `MSV:MSV000088235`,
+    `MTBLS1234` → `MTBLS:MTBLS1234`). Already-prefixed CURIEs pass through
+    unchanged. Closes audit finding 6d (caller had to know MW/MSV/MTBLS
+    pattern → prefix mapping).
+- **12 more verified compound-name synonyms** in `data/_synonyms.json`
+  (`TMAO` → `trimethylamine oxide`, `rapamycin` → `sirolimus`, `p-cresol`
+  / `4-methylphenol` → `para-cresol`, `p-coumaric acid` → `4-coumaric acid`,
+  `compactin` → `mevastatin`, `indoxyl sulphate` / `tetracyclin` /
+  `kanamycin` / `catechin` / `indole-3-propionic acid` aliases). All targets
+  verified against the bundled TSV at load time.
+
+### Deferred (audit-2 findings, kept open in ROADMAP)
+- **Matrix-name fuzzy normalisation** (audit finding tier-2 of 6e — qualifier
+  is added, the synonym layer is not). The matrix vocab (urine, serum, plasma,
+  feces/stool/fecal, plant leaf, soil, …) has long-tail spellings that benefit
+  from semantic similarity rather than another flat JSON. Tracked as v0.6.0
+  candidate with a sentence-transformer (e.g. all-MiniLM-L6-v2) over a curated
+  canonical-matrix list. Out of scope for v0.5.0 to keep the package
+  zero-ML-dependency.
+- **Tier-2 compound-synonym expansion via PubChem PUG-REST**. Audit 2 found
+  domain-specific resolution drops (gut metabolomics 65%, natural-product
+  drugs 76%). The hand-curated `_synonyms.json` won't scale. Tracked as v0.6.0
+  candidate using `/compound/name/<name>/synonyms/JSON` and
+  `/compound/name/<name>/cids/JSON` from PubChem to bridge to existing TSV
+  PubChem CIDs. Will run inside `build_data.py` so the wheel stays offline.
+
+### Tests
+- 175 passing on Py 3.13 at 99.36% coverage (was 99 at 99.3%).
+- New `tests/test_registries.py` (37 cases) covers all 4 registry helpers.
+- New `test_synonym_layer_v0_5_0_domain_specific_aliases` pins the 12
+  audit-2-driven aliases.
+- `test_composition.py::test_compose_qualifier_union` updated to 36.
+
 ## [0.4.0] — 2026-05-24
 
 Closes the three deferred audit findings carried over from v0.3.1.

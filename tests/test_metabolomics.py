@@ -34,16 +34,20 @@ def test_qualifiers_are_frozenset_with_expected_members():
         # Study-level (v0.4.0)
         "has_processing_software", "analyzed_with", "acquired_in_mode",
         "chromatographed_on", "uses_mass_analyzer",
+        # Study/paper-level (v0.5.0)
+        "uses_database", "acquired_from_matrix", "consolidates_dataset",
     })
 
 
 def test_study_level_qualifiers_present():
-    """v0.4.0: 5 study-level qualifiers cover ASB heuristic metabolomics_metadata
-    fields (processing_software, instrument, ionization_mode,
-    chromatography_type, mass_analyzer). Closes audit finding #6."""
+    """v0.4.0+v0.5.0: study/paper-level qualifiers cover ASB heuristic
+    metabolomics_metadata (processing_software, instrument, ionization_mode,
+    chromatography_type, mass_analyzer) plus audit-2 follow-ups
+    (uses_database, acquired_from_matrix, consolidates_dataset)."""
     a = MetabolomicsAdapter()
     for q in ("has_processing_software", "analyzed_with", "acquired_in_mode",
-              "chromatographed_on", "uses_mass_analyzer"):
+              "chromatographed_on", "uses_mass_analyzer",
+              "uses_database", "acquired_from_matrix", "consolidates_dataset"):
         assert q in a.qualifiers
 
 
