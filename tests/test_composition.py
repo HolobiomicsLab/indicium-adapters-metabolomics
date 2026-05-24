@@ -107,3 +107,14 @@ def test_compose_extraction_context_includes_all_three():
     assert "metabolomics" in ctx.lower()
     assert "metabokg" in ctx.lower()
     assert "emi" in ctx.lower()
+
+
+def test_compose_from_discover_adapters_works():
+    """The README example must work: compose_adapters(list(discover_adapters().values()))."""
+    from indicium_adapters import discover_adapters
+    found = discover_adapters()
+    composite = compose_adapters(list(found.values()))
+    # All three names appear in the joined domain_id (order is discover_adapters' iteration order)
+    for name in ("metabolomics", "metabokg", "emi"):
+        assert name in composite.domain_id
+    assert composite.domain_id.count("+") == 2

@@ -32,7 +32,10 @@ enriched = adapter.enrich_claim({
 
 # Use all three composed
 composite = compose_adapters(list(discover_adapters().values()))
-# composite.domain_id == "metabolomics+metabokg+emi"
+# composite.domain_id is "+"-joined in discover_adapters() iteration order
+# (typically alphabetical: "emi+metabokg+metabolomics").
+# To control order, pass an explicit list, e.g.:
+#   compose_adapters([adapters["metabolomics"], adapters["metabokg"], adapters["emi"]])
 ```
 
 ## SHACL shapes

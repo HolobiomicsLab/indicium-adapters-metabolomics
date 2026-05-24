@@ -4,11 +4,17 @@ DO NOT run at install or import time. Run manually before a release:
 
     python -m indicium_adapters_metabolomics.data.build_data
 
+Design: the output is a SINGLE merged TSV (refmet_compounds.tsv). RefMet rows and
+BridgeDb cross-references are joined on InChIKey at build time; runtime
+(_enrichment.CompoundIndex) loads only that one file. There is intentionally no
+separate bridgedb_metabolites.tsv shipped — keeping a single file simplifies
+lookup and avoids stale-key drift between two tables.
+
 Pulls fresh data from:
 - RefMet:   https://www.metabolomicsworkbench.org/databases/refmet/refmet_download.php
 - BridgeDb: https://bridgedb.github.io/data/gene_database/metabolites-latest.tsv
 
-Merges on InChIKey, writes refmet_compounds.tsv with columns:
+Writes refmet_compounds.tsv with columns:
     name_lower, refmet_name, inchikey, inchikey2d,
     chebi, hmdb, kegg, lipidmaps, pubchem, wikidata,
     chemical_class, super_class, pathway
