@@ -1,0 +1,48 @@
+@prefix asb:  <https://asb.holobiomics.org/ns/asb#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Per-qualifier constraints on asb:Claim for MetaboKG-flavored claims.
+
+asb:SpectralMatchShape
+    a sh:NodeShape ;
+    sh:targetNode asb:Claim ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "spectral_match" ;
+    ] ;
+    sh:property [
+        sh:path asb:object_ontology_term ;
+        sh:pattern "^(USI|InChIKey|CHEBI):" ;
+        sh:severity sh:Warning ;
+        sh:message "spectral_match claims should reference a USI, InChIKey, or CHEBI CURIE in the object" ;
+    ] .
+
+asb:AnnotationLevelShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "has_annotation_level" ;
+    ] ;
+    sh:property [
+        sh:path asb:object ;
+        sh:in ("level_1" "level_2" "level_3") ;
+        sh:severity sh:Violation ;
+        sh:message "has_annotation_level object must be one of level_1, level_2, level_3" ;
+    ] .
+
+asb:ClassifiedAsShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "classified_as" ;
+    ] ;
+    sh:property [
+        sh:path asb:object_ontology_term ;
+        sh:pattern "^(NPC|ClassyFire):" ;
+        sh:severity sh:Warning ;
+        sh:message "classified_as object_ontology_term should start with NPC: or ClassyFire:" ;
+    ] .
