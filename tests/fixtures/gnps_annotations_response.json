@@ -1,0 +1,53 @@
+{
+  "_comment": "Synthetic GNPS result_json?view=view_all_annotations_DB response. Field names verbatim from a live probe on 2026-05-24 (task 1ad7bc366aef45ce81d2dfcca0a9a5e7). Two rows trimmed to what the parser actually consults.",
+  "blockData": [
+    {
+      "#Scan#": "1099",
+      "Adduct": "M+H",
+      "Charge": "1",
+      "Compound_Name": "Spectral Match to 1,2-Dipentadecanoyl-sn-glycero-3-phosphoethanolamine from NIST14",
+      "INCHI": "N/A",
+      "Instrument": "IT/ion trap",
+      "IonMode": "Positive",
+      "Ion_Source": "ESI",
+      "LibMZ": "664.506",
+      "LibraryName": "lib-00031.mgf",
+      "LibraryQualityString": "Bronze",
+      "MQScore": "0.976676",
+      "MZErrorPPM": "15.0635",
+      "MassDiff": "0.0100098",
+      "Precursor_MZ": "664.506",
+      "RT_Query": "4973.91",
+      "SharedPeaks": "31",
+      "Smiles": "N/A",
+      "SpectrumID": "CCMSLIB00003136425"
+    },
+    {
+      "#Scan#": "17",
+      "Adduct": "M+H",
+      "Charge": "1",
+      "Compound_Name": "Spectral Match to Gln-Glu-Lys from NIST14",
+      "INCHI": "N/A",
+      "Instrument": "QqQ",
+      "IonMode": "Positive",
+      "Ion_Source": "ESI",
+      "LibMZ": "404.207",
+      "LibraryName": "lib-00031.mgf",
+      "LibraryQualityString": "Bronze",
+      "MQScore": "0.956378",
+      "MZErrorPPM": "2.4915",
+      "MassDiff": "0.00100708",
+      "Precursor_MZ": "404.207",
+      "RT_Query": "2906.94",
+      "SharedPeaks": "15",
+      "Smiles": "N/A",
+      "SpectrumID": "CCMSLIB00003137040"
+    },
+    {
+      "#Scan#": "9999",
+      "Compound_Name": "",
+      "MQScore": "0.1",
+      "SharedPeaks": "2"
+    }
+  ]
+}

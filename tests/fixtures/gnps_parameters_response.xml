@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<parameters>
+<parameter name="ANALOG_SEARCH">0</parameter>
+<parameter name="CLUSTER_MIN_SIZE">1</parameter>
+<parameter name="CREATE_CLUSTER_BUCKETS">1</parameter>
+<parameter name="MAXIMUM_COMPONENT_SIZE">100</parameter>
+<parameter name="MAX_SHIFT_MASS">100.0</parameter>
+<parameter name="MIN_MATCHED_PEAKS">6</parameter>
+<parameter name="MIN_MATCHED_PEAKS_SEARCH">6</parameter>
+<parameter name="MIN_PEAK_INT">0</parameter>
+<parameter name="PAIRS_MIN_COSINE">0.65</parameter>
+<parameter name="RUN_MSCLUSTER">on</parameter>
+<parameter name="SCORE_THRESHOLD">0.7</parameter>
+<parameter name="TOPK">10</parameter>
+<parameter name="WINDOW_FILTER">0</parameter>
+<parameter name="desc">GNPS Paper Stenothricin Network - V2 Networking</parameter>
+<parameter name="email">someone@example.org</parameter>
+<parameter name="ion_mode">Positive</parameter>
+<parameter name="library_on_server">d.speclibs;</parameter>
+<parameter name="task">1ad7bc366aef45ce81d2dfcca0a9a5e7</parameter>
+<parameter name="tolerance.Ion_tolerance">0.5</parameter>
+<parameter name="tolerance.PM_tolerance">2.0</parameter>
+<parameter name="workflow">METABOLOMICS-SNETS-V2</parameter>
+</parameters>

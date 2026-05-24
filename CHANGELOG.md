@@ -2,6 +2,63 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] — 2026-05-24
+
+Lands three external-API integrations the user flagged after the v0.5.0
+audit-2 follow-up: ReDU per-file sample-metadata lookup and the two GNPS
+ProteoSAFe endpoints (`result_json.jsp` annotations view + ManageParameters
+XML). Each new submodule projects directly into existing adapter qualifier
+vocab — no new qualifiers needed.
+
+### Added
+- **`indicium_adapters_metabolomics.redu`** — projects ReDU's per-file
+  sample-metadata record into existing adapter qualifiers:
+  `found_in_organism` (EMI; NCBITaxon CURIE), `acquired_from_matrix`
+  (Metabolomics v0.5.0; UBERON CURIE or free-text SampleType fallback),
+  `is_biomarker_for` (Metabolomics; DOID CURIE), `analyzed_with`,
+  `acquired_in_mode`, `chromatographed_on` (Metabolomics v0.4.0).
+  Public surface: `redu_lookup(filename, *, session=None, cache_dir=...)`,
+  `redu_to_claims(filename, study_id, *, sample_info=None, …)`, and the pure
+  `redu_sample_to_claims(sample_info, subject, *, source_doi=None)`.
+  On-disk cache at `~/.cache/indicium-adapters-metabolomics/redu/<sha1>.json`.
+  Closes audit-2 finding 6e (matrix vocabulary) for files that have a known
+  MassIVE path — demotes the MiniLM matrix-fuzzy fallback to a tier-2.
+- **`indicium_adapters_metabolomics.gnps`** — two parsers sharing infra:
+  - `parse_gnps_annotations(blockdata, task_id)` / `fetch_gnps_annotations(task_id)`
+    consume `result_json.jsp?view=view_all_annotations_DB`. Emits
+    `spectral_match` (MetaboKG) claims with subject
+    `gnps_task:<task>:scan:<#Scan#>`, USI in `ontology_terms.object`, and
+    MQScore/SharedPeaks/MZErrorPPM/precursor_mz/library/etc. in `evidence`.
+  - `parse_gnps_parameters(xml_text, task_id)` / `fetch_gnps_parameters(task_id)`
+    consume the ManageParameters XML. Emits `has_processing_software`
+    (workflow ID → human label via the v0.5.0 software registry,
+    e.g. `METABOLOMICS-SNETS-V2` → `GNPS Classical Molecular Networking`),
+    `analyzed_with` (tolerances concatenated literal), `acquired_in_mode`
+    (lowercased polarity literal).
+  - `gnps_task_to_claims(task_id, *, annotations_data=None,
+    parameters_xml=None, …)` — one call for both projections.
+- **Live-API smoke tests** for both submodules, gated on the env var
+  `INDICIUM_LIVE_TESTS=1` so CI doesn't depend on the live endpoints.
+
+### Tests
+- 225 passing on Py 3.13 at 95.18% coverage (was 175 at 99.36%).
+- New `tests/test_redu.py` (21 cases) + `tests/test_gnps.py` (29 cases).
+- Offline fixtures at `tests/fixtures/redu_sample_response.json`,
+  `gnps_annotations_response.json`, `gnps_parameters_response.xml`. The
+  GNPS XML fixture was captured verbatim from a live probe on 2026-05-24
+  against task `1ad7bc366aef45ce81d2dfcca0a9a5e7`; the annotations JSON
+  was trimmed from the same probe.
+
+### Deferred to v0.7.0
+- GNPS `view_all_clusters_withID_beta` and `view_network_pairs` views —
+  scoped out of this sprint because their column layouts weren't probed
+  live; would have meant guessing names. Documented in ROADMAP.
+- MiniLM matrix-name fuzzy normaliser — design unchanged from v0.5.0
+  ROADMAP. May not be needed if ReDU coverage on a real corpus is high
+  enough.
+- PubChem tier-2 synonyms — still user-driven via the v0.5.0
+  `data/build_synonyms.py` skeleton.
+
 ## [0.5.0] — 2026-05-24
 
 Audit-2 follow-up. A second live audit (3 fresh ASB heuristic builds: Haffner
