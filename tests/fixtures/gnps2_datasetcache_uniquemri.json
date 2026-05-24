@@ -1,0 +1,39 @@
+{
+  "_comment": "Datasette `?_shape=objects` response from https://datasetcache.gnps2.org/datasette/database/uniquemri.json — captured verbatim from a live probe on 2026-05-24 (dataset=MSV000082048). One row trimmed to keep the fixture small.",
+  "database": "database",
+  "table": "uniquemri",
+  "is_view": false,
+  "rows": [
+    {
+      "usi": "mzspec:MSV000082048:ccms_peak/Plate_22/11_12.mzML",
+      "filepath": "ccms_peak/Plate_22/11_12.mzML",
+      "dataset": "MSV000082048",
+      "collection": "Plate_22",
+      "is_update": 0,
+      "update_name": "nan",
+      "create_time": "2024-05-13 21:07:15.800000",
+      "size": 49609179,
+      "size_mb": 47,
+      "sample_type": "GNPS",
+      "spectra_ms1": 2147,
+      "spectra_ms2": 2658,
+      "instrument_vendor": "Thermo Fisher Scientific",
+      "instrument_model": "Q Exactive Plus",
+      "file_processed": "No",
+      "RT_Range_in_Min": 12.5,
+      "Top_CEs": "30",
+      "Top_CE_Counts": "2658",
+      "MassAnalyzer": "orbitrap;quadrupole",
+      "Ionization": "electrospray inlet;electrospray ionization",
+      "classification": "DDA"
+    }
+  ],
+  "truncated": false,
+  "filtered_table_rows_count": 1,
+  "columns": ["usi", "filepath", "dataset", "collection", "is_update",
+              "update_name", "create_time", "size", "size_mb", "sample_type",
+              "spectra_ms1", "spectra_ms2", "instrument_vendor",
+              "instrument_model", "file_processed", "RT_Range_in_Min",
+              "Top_CEs", "Top_CE_Counts", "MassAnalyzer", "Ionization",
+              "classification"]
+}

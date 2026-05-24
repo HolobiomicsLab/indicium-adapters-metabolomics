@@ -20,6 +20,7 @@ from indicium_adapters_metabolomics._registries import (
 )
 from indicium_adapters_metabolomics.emi import EMIAdapter
 from indicium_adapters_metabolomics.gnps import (
+    datasetcache_to_claims,
     gnps_task_to_claims,
     parse_gnps_annotations,
     parse_gnps_parameters,
@@ -36,6 +37,7 @@ __all__ = [
     "MetabolomicsAdapter",
     "accession_to_curie",
     "canonical_software_name",
+    "datasetcache_to_claims",
     "gnps_task_to_claims",
     "is_ignored_tool_name",
     "is_metabolomics_database",

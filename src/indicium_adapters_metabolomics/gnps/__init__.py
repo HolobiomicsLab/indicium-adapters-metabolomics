@@ -17,6 +17,12 @@ Public surface:
 """
 from __future__ import annotations
 
+from indicium_adapters_metabolomics.gnps.datasetcache import (
+    DATASETCACHE_BASE,
+    datasetcache_row_to_claims,
+    datasetcache_to_claims,
+    fetch_datasetcache_row,
+)
 from indicium_adapters_metabolomics.gnps.parser import (
     GNPS_PARAMETERS_URL,
     GNPS_RESULT_JSON_URL,
@@ -28,8 +34,12 @@ from indicium_adapters_metabolomics.gnps.parser import (
 )
 
 __all__ = [
+    "DATASETCACHE_BASE",
     "GNPS_PARAMETERS_URL",
     "GNPS_RESULT_JSON_URL",
+    "datasetcache_row_to_claims",
+    "datasetcache_to_claims",
+    "fetch_datasetcache_row",
     "fetch_gnps_annotations",
     "fetch_gnps_parameters",
     "gnps_task_to_claims",
