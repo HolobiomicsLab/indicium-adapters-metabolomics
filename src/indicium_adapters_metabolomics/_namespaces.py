@@ -9,7 +9,13 @@ from __future__ import annotations
 METABOLOMICS_PREFIXES: dict[str, str] = {
     "CHEBI":     "http://purl.obolibrary.org/obo/CHEBI_",
     "HMDB":      "https://hmdb.ca/metabolites/",
+    # Public metabolomics-study repositories — accessions appear in paper text
+    # as plain prefixed IDs (MTBLS####, ST######, MSV########) and the
+    # MetaboKGAdapter's `annotated_in` qualifier and ASB's
+    # metabolomics_metadata.data_accessions both reference them.
     "MTBLS":     "https://www.ebi.ac.uk/metabolights/",
+    "MW":        "https://www.metabolomicsworkbench.org/data/DRCCStudySummary.php?Mode=SetupRawDataDownload&StudyID=",
+    "MSV":       "https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?accession=",
     "KEGG":      "https://www.kegg.jp/entry/",
     "LIPIDMAPS": "https://www.lipidmaps.org/databases/lmsd/",
     "PUBCHEM":   "https://pubchem.ncbi.nlm.nih.gov/compound/",

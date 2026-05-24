@@ -79,7 +79,8 @@ ruff check .
 pytest --cov=indicium_adapters_metabolomics
 ```
 
-CI matrix is 3.10 / 3.11 / 3.12.
+CI matrix is 3.12 / 3.13. `indicium-adapters>=0.4.0` requires `>=3.12`, so the
+metabolomics package's floor follows it.
 
 ## Repo relationships
 

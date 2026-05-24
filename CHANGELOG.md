@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] — 2026-05-24
+
+### Added
+- **`MSV` and `MW` repository prefixes** in `MetabolomicsAdapter.ontology_prefixes`
+  (was `MTBLS` only). MassIVE and Metabolomics Workbench Study accessions are
+  the dominant `data_accessions` values emitted by ASB's heuristic metabolomics
+  pipeline; previously the adapter silently dropped them.
+- **CURIE-keyed enrichment**: `CompoundIndex.lookup()` now resolves subjects
+  already in CURIE form — `CHEBI:17234`, `HMDB:HMDB0000122`, `KEGG:C00031`,
+  `WD:Q37525`, `LIPIDMAPS:LMPK12070051`, `PUBCHEM:5793` all map back to the
+  full cross-reference row. Bare-ID columns in the TSV (hmdb, kegg, lipidmaps)
+  are auto-prefixed when indexing. `MetabolomicsAdapter.enrich_claim()` thus
+  works for LLM extractors that emit CURIEs directly and for mzTab SML rows
+  whose `database_identifier` is already a CURIE — previously these returned
+  empty `ontology_terms` despite the bundled TSV containing the data.
+- **RefMet enrichment grew**: bundled TSV now ships **3,218 rows with
+  `refmet_name`** (was 628 at the v0.3.0 tag). Same count for `chemical_class`,
+  `super_class`, `pathway`. Achieved by continuing to run the incremental
+  `enrich_with_refmet()` cache against the existing TSV without re-fetching
+  Wikidata.
+
+### Changed
+- **Python floor bumped to `>=3.12`** to match `indicium-adapters>=0.4.0`
+  (audit caught: the prior `>=3.10` declaration plus a 3.10/3.11/3.12/3.13 CI
+  matrix made CI break on the 3.10 and 3.11 jobs at `pip install` time because
+  the transitive dep could not resolve). CI matrix now `3.12 / 3.13`. Ruff
+  `target-version` and classifier list updated accordingly.
+
+### Audit notes (see `audit_indicium_meta_2026-05-24` for reproducer)
+- Live audit ran 3 fresh ASB heuristic builds (Mauricio 2018, MetaboLights/
+  MetaboAnalyst 2024, IIMN/MSV 2021) and piped outputs through the three
+  adapters. Compound-name → CHEBI resolution rate: **14/15 (93%)** on a
+  common-metabolite list. All 84 prior tests + 8 new audit-driven tests pass
+  on 3.13 at 99.6% coverage.
+- Open items deferred: SHACL shapes are mostly `sh:Warning` and don't constrain
+  the qualifier vocabulary; no qualifier for `processing_software` /
+  `instrument` / `ionization_mode` / `chromatography_type` /
+  `mass_analyzer` — five ASB extraction categories the adapter still can't
+  represent. Listed in ROADMAP under v0.4.0.
+
 ## [0.3.0] — 2026-05-24
 
 ### Added

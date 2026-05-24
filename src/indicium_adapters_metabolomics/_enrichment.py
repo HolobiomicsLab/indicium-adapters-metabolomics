@@ -18,10 +18,30 @@ class CompoundIndex:
     responsible for selecting which CURIE to use (CHEBI / HMDB / PUBCHEM, etc.).
     """
 
+    # Cross-reference columns the by-CURIE index is built from, paired with the
+    # CURIE prefix to use when the TSV stores a bare ID (no colon). The
+    # Wikidata-derived TSV stores chebi / pubchem / wikidata with the prefix
+    # baked in (e.g. "CHEBI:17234"), but hmdb / kegg / lipidmaps as bare
+    # identifiers (e.g. "HMDB0000122", "C00031", "LMPK12070051"); we normalise
+    # both forms so consumers can pass either "CHEBI:17234" or "HMDB:HMDB0000122"
+    # to enrich_claim() and get a hit.
+    _CURIE_COLUMNS: tuple[tuple[str, str], ...] = (
+        ("chebi",     "CHEBI"),
+        ("hmdb",      "HMDB"),
+        ("pubchem",   "PUBCHEM"),
+        ("kegg",      "KEGG"),
+        ("wikidata",  "WD"),
+        ("lipidmaps", "LIPIDMAPS"),
+    )
+
     def __init__(self) -> None:
         self._by_name: dict[str, dict[str, str]] = {}
         self._by_inchikey: dict[str, dict[str, str]] = {}
         self._by_inchikey2d: dict[str, dict[str, str]] = {}
+        # CURIE-indexed lookups so enrich_claim() can resolve subjects already
+        # in CURIE form (e.g. "CHEBI:17234") to the full cross-reference row,
+        # not just bare compound names.
+        self._by_curie: dict[str, dict[str, str]] = {}
         self._loaded: bool = False
 
     def _load(self) -> None:
@@ -43,15 +63,33 @@ class CompoundIndex:
                     self._by_inchikey[ik] = row
                     if len(ik) >= 14:
                         self._by_inchikey2d[ik[:14]] = row
+                for col, prefix in self._CURIE_COLUMNS:
+                    val = row.get(col, "").strip()
+                    if not val:
+                        continue
+                    curie = val if ":" in val else f"{prefix}:{val}"
+                    # First write wins on collision (TSV row order). Index both
+                    # the canonical form and its uppercase variant so consumers
+                    # can pass either "CHEBI:17234" or "chebi:17234".
+                    self._by_curie.setdefault(curie, row)
+                    self._by_curie.setdefault(curie.upper(), row)
         self._loaded = True
 
     def lookup(self, query: str) -> dict[str, str] | None:
         """Look up a compound by name (case-insensitive), full InChIKey (27 chars),
-        or InChIKey2D (14 chars). Returns the matching row dict, or None."""
+        InChIKey2D (14 chars), or CURIE (e.g. "CHEBI:17234", "HMDB:HMDB0000122",
+        "PUBCHEM:5793", "KEGG:C00031", "WD:Q37525"). Returns the matching row
+        dict, or None."""
         if not query or not query.strip():
             return None
         self._load()
         q = query.strip()
+        # CURIE-shaped queries: try as-is, then upper-cased prefix.
+        if ":" in q and not q.startswith("InChI="):
+            if hit := self._by_curie.get(q):
+                return hit
+            if hit := self._by_curie.get(q.upper()):
+                return hit
         ql = q.lower()
         if hit := self._by_name.get(ql):
             return hit

@@ -53,22 +53,42 @@ The roadmap below leans heavily on quadrants 1–3. New PRs should justify thems
 
 See CHANGELOG.md.
 
+## v0.3.1 — RELEASED 2026-05-24 (audit follow-up)
+
+See CHANGELOG.md. Closes finding #1 (Python floor), #2 (MSV/MW prefixes),
+and #3 (CURIE enrichment) from the 2026-05-24 ASB-driven live audit.
+
 ## v0.3.0 — RELEASED 2026-05-24
 
 See CHANGELOG.md.
 
 Done items from the v0.3.0 candidate list:
-- **RefMet canonical-name layer**: `refmet_name` populated for 628 rows via
+- **RefMet canonical-name layer**: `refmet_name` populated for ~3.2k rows via
   per-InChIKey REST API (throttled, cached, gitignored cache). Fills
-  `chemical_class`, `super_class`, `pathway` too. v0.3.0 was a partial run
-  (cap 5,000 priority rows; 900 looked up so far); re-run `build_data.py`
-  to extend coverage incrementally via the cache.
+  `chemical_class`, `super_class`, `pathway` too. v0.3.0 was tagged at 628
+  rows after the initial partial run; the cache has since been extended in
+  the TSV shipped with v0.3.1. Cap is 5,000 priority rows (InChIKey + HMDB +
+  KEGG/PubChem); re-run `build_data.py` to extend coverage incrementally.
 - **Wikidata top-organisms sitelink ranking**: 53-species curated lookup (via
   P225 taxon name, two batches) + broad P31=Q16521 LIMIT 400 supplement.
   460 organisms with canonical QIDs.
 
 ## v0.4.0 candidates
 
+- **Tighten SHACL shapes (audit finding #3)** — bump
+  `MetabolomicsClaimCurieShape` from `sh:Warning` to `sh:Violation`, add a
+  shape constraining `asb:qualifier` to the adapter's qualifier frozenset,
+  add a shape requiring `asb:subject` and `asb:qualifier` to be present. The
+  current shapes pass empty subjects, made-up qualifiers, and garbage CURIEs
+  under the typical `allow_warnings=True` invocation.
+- **Five missing qualifiers for ASB heuristic output (audit finding #6)** —
+  `has_processing_software`, `analyzed_with`, `acquired_in_mode`,
+  `chromatographed_on`, `uses_mass_analyzer`. These let the adapter project
+  ASB metabolomics_metadata into claims without needing LLM extraction.
+- **Compound synonym layer (audit finding #7)** — Wikidata's English label
+  for IAA is "indoleacetic acid"; ASB and papers say "indole-3-acetic acid".
+  A small synonym JSON bridging common dashes / numbering variants would
+  close the last few percent of resolution misses.
 - **mzTab-M SME (evidence) projection** — extend `parse_mztab_to_claims` to
   also emit `spectral_match` claims from SME rows.
 - **Compress the bundled TSV** — gzip dropping ~22 MB to ~5 MB; CompoundIndex
