@@ -47,8 +47,15 @@ COLUMNS = [
 # Chunked query — fetch by ChEBI ID range to keep each subquery under 60s.
 # At ~30k ChEBI-mapped compounds in Wikidata, chunking by 5k IDs yields ~6 requests.
 CHEBI_RANGES = [
-    (1, 5_000), (5_001, 25_000), (25_001, 50_000),
-    (50_001, 100_000), (100_001, 200_000), (200_001, 500_000),
+    (1, 5_000), (5_001, 25_000),
+    (25_001, 37_500), (37_501, 50_000),           # split (original 25001-50000 too large)
+    (50_001, 62_500), (62_501, 75_000),            # split (50001-75000 returned 18k rows)
+    (75_001, 82_500), (82_501, 90_000),            # split (75001-100000 truncated)
+    (90_001, 100_000),
+    (100_001, 125_000), (125_001, 150_000),        # split (100001-200000 timed out)
+    (150_001, 175_000), (175_001, 200_000),
+    (200_001, 275_000), (275_001, 350_000),        # split (200001-500000 large range)
+    (350_001, 425_000), (425_001, 500_000),
 ]
 
 
@@ -117,13 +124,55 @@ def _extract_row(binding: dict) -> dict[str, str]:
     }
 
 
-def fetch_all_wikidata() -> list[dict[str, str]]:
+CHECKPOINT_PATH = OUTPUT_PATH.parent / "_build_data_checkpoint.tsv"
+
+
+def _load_checkpoint() -> tuple[list[dict[str, str]], set[tuple[int, int]]]:
+    """Load previously fetched rows and completed ranges from checkpoint file."""
     rows: list[dict[str, str]] = []
+    done: set[tuple[int, int]] = set()
+    if not CHECKPOINT_PATH.exists():
+        return rows, done
+    with CHECKPOINT_PATH.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        for row in reader:
+            if row.get("_range_marker"):
+                lo, hi = row["_range_marker"].split("-")
+                done.add((int(lo), int(hi)))
+            else:
+                rows.append({k: v for k, v in row.items() if not k.startswith("_")})
+    return rows, done
+
+
+def _append_checkpoint(chunk: list[dict[str, str]], lo: int, hi: int) -> None:
+    """Append a completed chunk to the checkpoint file."""
+    is_new = not CHECKPOINT_PATH.exists()
+    with CHECKPOINT_PATH.open("a", encoding="utf-8", newline="") as fh:
+        all_cols = COLUMNS + ["_range_marker"]
+        writer = csv.DictWriter(fh, fieldnames=all_cols, delimiter="\t",
+                                lineterminator="\n", extrasaction="ignore")
+        if is_new:
+            writer.writeheader()
+        for row in chunk:
+            writer.writerow({col: row.get(col, "") for col in COLUMNS})
+        # Write a sentinel row so we know this range is done
+        writer.writerow({col: "" for col in COLUMNS} | {"_range_marker": f"{lo}-{hi}"})
+
+
+def fetch_all_wikidata() -> list[dict[str, str]]:
+    rows, done_ranges = _load_checkpoint()
+    if done_ranges:
+        print(f"Resuming from checkpoint: {len(done_ranges)} ranges already done, "
+              f"{len(rows)} rows loaded", file=sys.stderr)
     for lo, hi in CHEBI_RANGES:
+        if (lo, hi) in done_ranges:
+            print(f"Skipping ChEBI:{lo}..{hi} (already done)", file=sys.stderr)
+            continue
         print(f"Fetching ChEBI:{lo}..{hi} ...", file=sys.stderr)
         chunk = fetch_wikidata_chunk(lo, hi)
         print(f"  got {len(chunk)} rows", file=sys.stderr)
         rows.extend(chunk)
+        _append_checkpoint(chunk, lo, hi)
     return rows
 
 
@@ -157,6 +206,10 @@ def main() -> int:
     print(f"After InChIKey dedupe: {len(rows)} rows", file=sys.stderr)
     write_tsv(rows)
     print(f"Wrote {OUTPUT_PATH}", file=sys.stderr)
+    # Clean up checkpoint file on success
+    if CHECKPOINT_PATH.exists():
+        CHECKPOINT_PATH.unlink()
+        print(f"Removed checkpoint file", file=sys.stderr)
     return 0
 
 

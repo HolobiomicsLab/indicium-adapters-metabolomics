@@ -7,9 +7,9 @@ from indicium_adapters_metabolomics._enrichment import COMPOUND_INDEX, CompoundI
 def test_lookup_by_name_returns_row():
     row = COMPOUND_INDEX.lookup("glucose")
     assert row is not None
-    assert row["refmet_name"] == "D-Glucose"
+    # v0.2.0: refmet_name is empty (deferred to v0.3.0); pin stable CHEBI CURIE instead
     assert row["chebi"] == "CHEBI:17234"
-    assert row["hmdb"] == "HMDB0000122"
+    assert row["wikidata"] == "WD:Q37525"
 
 
 def test_lookup_is_case_insensitive():
@@ -27,15 +27,19 @@ def test_lookup_empty_returns_none():
 
 
 def test_lookup_by_full_inchikey():
+    # WQZGKKKJIJFFOK-GASJEMHNSA-N is the InChIKey for d-glucopyranose (CHEBI:4167) in Wikidata
     row = COMPOUND_INDEX.lookup("WQZGKKKJIJFFOK-GASJEMHNSA-N")
     assert row is not None
-    assert row["refmet_name"] == "D-Glucose"
+    # v0.2.0: refmet_name empty; pin stable CHEBI CURIE instead
+    assert row["chebi"] == "CHEBI:4167"
 
 
 def test_lookup_by_inchikey2d():
+    # InChIKey2D lookup returns the first matching compound with that 2D skeleton
     row = COMPOUND_INDEX.lookup("WQZGKKKJIJFFOK")
     assert row is not None
-    assert row["refmet_name"] == "D-Glucose"
+    # v0.2.0: refmet_name empty; verify chebi is present (multiple pyranose isomers share this 2D key)
+    assert "chebi" in row
 
 
 def test_lookup_is_pure():
@@ -45,11 +49,11 @@ def test_lookup_is_pure():
     assert r1 == r2
 
 
-def test_index_size_at_least_10():
-    """The stub TSV ships 10 metabolites; production should be much larger."""
+def test_index_size_substantial():
+    """The v0.2.0 TSV ships ~156k rows from Wikidata; verify substantial coverage."""
     # Force a load
-    _ = COMPOUND_INDEX.lookup("glucose")
-    assert len(COMPOUND_INDEX._by_name) >= 10
+    COMPOUND_INDEX._load()
+    assert len(COMPOUND_INDEX._by_name) >= 5000
 
 
 def test_lazy_load_only_once():
@@ -59,5 +63,5 @@ def test_lazy_load_only_once():
     _ = fresh.lookup("glucose")
     assert fresh._loaded is True
     n = len(fresh._by_name)
-    _ = fresh.lookup("glutamate")  # second call must not re-load
+    _ = fresh.lookup("glutamic acid")  # second call must not re-load (Wikidata label)
     assert len(fresh._by_name) == n
