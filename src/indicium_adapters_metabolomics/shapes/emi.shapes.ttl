@@ -1,0 +1,45 @@
+@prefix asb:  <https://asb.holobiomics.org/ns/asb#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+asb:MediatesInteractionShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "mediates_interaction" ;
+    ] ;
+    sh:or (
+        [ sh:path asb:subject_ontology_term ; sh:pattern "^WD:Q\\d+$" ]
+        [ sh:path asb:object_ontology_term ;  sh:pattern "^WD:Q\\d+$" ]
+    ) ;
+    sh:severity sh:Warning ;
+    sh:message "mediates_interaction claims should reference a Wikidata QID in subject or object" .
+
+asb:FoundInSpeciesShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "found_in_species" ;
+    ] ;
+    sh:property [
+        sh:path asb:object_ontology_term ;
+        sh:pattern "^(WD:Q|NCBITaxon:)" ;
+        sh:severity sh:Warning ;
+        sh:message "found_in_species object_ontology_term should start with WD:Q or NCBITaxon:" ;
+    ] .
+
+asb:AssociatedWithTraitShape
+    a sh:NodeShape ;
+    sh:targetClass asb:Claim ;
+    sh:property [
+        sh:path asb:qualifier ;
+        sh:hasValue "associated_with_trait" ;
+    ] ;
+    sh:property [
+        sh:path asb:object_ontology_term ;
+        sh:pattern "^(qudtUnit|PATO|emi):" ;
+        sh:severity sh:Warning ;
+        sh:message "associated_with_trait object_ontology_term should reference a QUDT unit, PATO quality, or emi: trait" ;
+    ] .
