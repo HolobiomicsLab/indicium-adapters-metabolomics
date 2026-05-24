@@ -43,6 +43,10 @@ asb:FoundInSpeciesShape
         """ ;
     ] .
 
+# AssociatedWithTraitShape: spec said "TRY trait identifier or QUDT unit", but TRY
+# does not have a canonical CURIE prefix. PATO (phenotypic quality) and emi:Trait
+# are accepted as functional substitutes; if a TRY: prefix is adopted in future,
+# add it to the FILTER below.
 asb:AssociatedWithTraitShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
