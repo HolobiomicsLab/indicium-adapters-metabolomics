@@ -1,5 +1,14 @@
 # CLAUDE.md — Dev Guide
 
+## Read this before adding anything
+
+The package's design philosophy and the 4-quadrant filter for new features
+live at the top of `ROADMAP.md` ("Design philosophy — why this package exists
+in the age of agentic AI"). Any new contribution should justify itself in
+those terms: does it **constrain** the agent, **resolve** identifiers,
+**validate** output, or is it something an agent could do as well freehand?
+If the last, skip it.
+
 ## Project shape
 
 Three sibling `DomainAdapter` classes in one wheel:

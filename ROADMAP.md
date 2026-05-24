@@ -2,6 +2,53 @@
 
 Items explicitly out of scope for v0.1.0, kept here for future minor releases.
 
+---
+
+## Design philosophy — why this package exists in the age of agentic AI
+
+The adapter is best understood as **a tool the agent uses**, not as something
+competing with the agent. In an era where LLMs/agents can read papers, parse
+file formats, and call REST APIs on demand, the question "why bundle all this
+infrastructure?" deserves a clear answer. Future contributions should be
+filtered through it.
+
+### What the adapter genuinely provides — and what gets MORE valuable, not less, as agents proliferate
+
+| Contribution | Why it earns its keep |
+|--------------|----------------------|
+| **Bundled cross-reference TSV** (~156k compounds) | An agent resolving "glucose → CHEBI:17234" via REST is **non-deterministic** (synonyms reshuffle), **slow** (~300ms/call × 10k compounds = an hour), and **hallucinates CURIEs** that don't exist. A disk lookup is ~10µs and reproducible across sessions and years. |
+| **`qualifiers` frozensets** | These go **into the LLM's extraction prompt** as a closed vocabulary. Without them, every paper invents its own predicates (`upregulated_in` / `over-expressed-in` / `elevated_among`) and downstream queries can't join across papers. With them, claims from 1000 papers compose into one queryable graph. This is the substrate that makes agent-extracted claims aggregate-useful, not just per-paper-useful. |
+| **Cross-property SHACL constraints** (the meaningful ones, not regex shapes) | `spectral_match` MUST have a USI/InChIKey/CHEBI in object; `mediates_interaction` MUST have a Wikidata Q-id somewhere. These are invariants an extractor agent can't reliably enforce on itself because they're cross-cutting. SHACL is the spell-check that catches the agent's bad days. |
+| **Versioned, tested tool-output parsers** (mzTab-M, SIRIUS, MZmine, matchms, GNPS) | A parser written once + tested + tagged at `v0.X.0` is reproducible from a `pip install`. The same job done freehand by an agent each session: 60s of reasoning per invocation, non-deterministic output, no test fixtures, no regression guard. **The agent should be USING the parser, not re-deriving it.** |
+| **Determinism for citations** | "Glucose (CHEBI:17234)" in a paper has to mean the same thing in 5 years. If your pipeline asks an LLM for the CURIE every time, you're one model-update away from your citations drifting. |
+
+### What the adapter should NOT keep doing (filter-out criteria)
+
+- **Hand-curated micro-dicts** (the original `_NPC_PATHWAYS = {10 entries}`) — replace with bulk extracts from authoritative sources (`npc_taxonomy.ttl`, Wikidata SPARQL). v0.2.0 already moved in this direction; keep going.
+- **CURIE-prefix-regex SHACL shapes** at sh:Warning level — an agent reviewing the claim would catch these; the validation theater isn't worth the maintenance.
+- **Anything an agent could do as well freehand** — if it's a one-shot task where the agent has the context and the cost-per-call is negligible, don't crystallize it into code.
+
+### The cost calculation that crystallizes the value
+
+One metabolomics paper through Perspicacite-AI:
+- **With adapters:** ~5k LLM tokens (extraction bound by closed vocab) + ~10ms enrichment + SHACL pass. **~$0.01.**
+- **Without adapters, agent freehand:** ~50k tokens (extract, reason about ontology, call REST APIs, validate, retry hallucinations) + ~30 REST calls. **~$0.15.**
+
+At 1 paper, 15× cost is invisible. At 10,000 papers (a corpus sweep) it's $1,400 vs $100. At 100k papers it's the line between "tractable" and "no". **The infrastructure is there because the agent is paying retail price for every problem the infrastructure solves wholesale.**
+
+### The 4-quadrant filter for new features
+
+For every proposed item below, ask which quadrant it lands in:
+
+1. **Constrain** the agent (closed vocabularies, qualifier sets) → agent does the hard contextual reading on a known surface. **Build.**
+2. **Resolve** identifiers (bundled cross-refs, parsers for tool outputs) → agent doesn't waste tokens on solved problems. **Build.**
+3. **Validate** the agent's output (cross-property SHACL, invariant checks) → catches failures the agent can't see in its own work. **Build.**
+4. **Anything an agent could do as well freehand** (trivial shapes, hand-curated synonym scraps, regex CURIE checks). **Skip.**
+
+The roadmap below leans heavily on quadrants 1–3. New PRs should justify themselves in those terms.
+
+---
+
 ## v0.2.0 — RELEASED 2026-05-24
 
 See CHANGELOG.md.
