@@ -86,6 +86,100 @@ Done items from the v0.3.0 candidate list:
   P225 taxon name, two batches) + broad P31=Q16521 LIMIT 400 supplement.
   460 organisms with canonical QIDs.
 
+## v0.6.0 candidates — external-API integrations (ReDU + GNPS)
+
+User-flagged on 2026-05-24. Three live API endpoints exist that can be
+projected into existing adapter qualifiers with thin parsers — each closes a
+present-day gap surfaced in audit 2 or in the deferred matrix work. All three
+fit the "Resolve" quadrant of the design philosophy: they convert a free-text
+or guess-driven step into a deterministic API call against an authoritative
+public service.
+
+### a. ReDU file-sample query → `acquired_from_matrix` / `found_in_organism`
+
+ReDU (Reusable Data — UCSD) exposes per-file sample metadata for every public
+MassIVE deposit, queried by mzML filename:
+
+    GET https://redu.ucsd.edu/filename?query=f.MSV000082048/ccms_peak/Plate_28/30_84.mzML
+
+Returns ReDU's curated `SampleType`, `SampleTypeSub1` (matrix), species,
+disease, etc. fields. This **gives us the matrix vocabulary for free** —
+no MiniLM needed for files whose MSV/redu URL is known. Maps directly:
+
+  - ReDU `NCBITaxonomy` field → `found_in_organism` (already in EMIAdapter
+    vocab) with NCBITaxon CURIE.
+  - ReDU `UBERONBodyPartName` / `SampleTypeSub1` → `acquired_from_matrix`
+    (v0.5.0 qualifier) with UBERON CURIE if present.
+  - ReDU `DOIDCommonName` → `is_biomarker_for` (already in MetabolomicsAdapter
+    vocab) with DOID CURIE.
+
+**Plan:** new submodule `indicium_adapters_metabolomics.redu` exposing
+`redu_lookup(filename: str) -> dict | None` and `redu_to_claims(filename,
+study_id) -> list[Claim]`. Cache to `_redu_cache.json` (gitignored). Disk
+cache promoted to a bundled snapshot once the call volume justifies it.
+**Synergy:** MiniLM matrix fallback (item below) becomes a tier-2 — ReDU is
+tier-1 because it is authoritative when present.
+
+### b. GNPS molecular-network result_json → `spectral_match` / `co_occurs_with`
+
+GNPS classical/FBMN tasks expose every view as JSON:
+
+    GET https://gnps.ucsd.edu/ProteoSAFe/result_json.jsp?task=<task_id>&view=<view_name>
+
+Useful views per task:
+  - `view_all_annotations_DB` — library hits per cluster index (compound name,
+    InChI, SMILES, library SMILES, MQScore, MassDiff, SharedPeaks, SpectrumID).
+    **Projects directly to `spectral_match` claims** (already in MetaboKGAdapter
+    vocab) with `MQScore` + `SharedPeaks` as evidence metadata.
+  - `view_all_clusters_withID_beta` — per-cluster metadata (parent mass, RT,
+    summed precursor intensity per group). Projects to `has_feature` +
+    `has_precursor_mz` + `has_retention_time` claims.
+  - `view_network_pairs` — node-to-node edges with cosine + shared peaks.
+    Projects to `co_occurs_with` (already in MetabolomicsAdapter vocab) with
+    evidence-type literal `gnps_network_edge`.
+
+**Plan:** new submodule `indicium_adapters_metabolomics.gnps` exposing
+`parse_gnps_task(task_id, views=("annotations","clusters","pairs")) -> list[Claim]`.
+Same dependency surface as the existing mzTab parser (`requests` already in
+pyproject). Cache JSON responses to a per-task dir under `~/.cache/indicium-
+adapters-metabolomics/gnps/<task_id>/` so re-runs are free. Higher priority
+than the v0.5.0-candidate `gnps` parser sketch above because the REST endpoint
+removes the public-API auth + UUID-route-guess problem.
+
+### c. GNPS ManageParameters XML → study-level qualifiers
+
+Each GNPS task exposes its run parameters as XML:
+
+    GET https://gnps.ucsd.edu/ProteoSAFe/ManageParameters?task=<task_id>
+
+Parses out: workflow name + version, m/z tolerances, min-matched-peaks,
+network thresholds, etc. **Maps directly to v0.4.0 study-level qualifiers**:
+
+  - workflow name → `has_processing_software` (e.g. "GNPS Classical Molecular
+    Networking" canonicalises through the v0.5.0 software registry).
+  - precursor / fragment tolerance → `analyzed_with` (object = literal
+    "precursor=0.02 Da, fragment=0.02 Da").
+  - ion mode parameter → `acquired_in_mode` (object = "positive" / "negative").
+
+**Plan:** part of the `gnps` submodule; `parse_gnps_parameters(task_id) ->
+list[Claim]`. Together with (b) one GNPS task fully roundtrips into a coherent
+study-level + claim-level Claim graph that the adapter already validates.
+
+### Wiring sequence
+
+These three parsers want to land in one v0.6.0 sprint because they share
+infrastructure (HTTP session, on-disk cache layout, retry/throttle policy).
+Suggested order:
+
+1. ReDU (smallest surface; closes the matrix-vocab problem the cheapest way)
+2. GNPS `result_json` annotation view (highest claim count per call)
+3. GNPS `result_json` clusters + pairs views
+4. GNPS `ManageParameters` XML
+5. MiniLM matrix fallback (deferred until ReDU coverage is measured against
+   a real ASB corpus — may not be needed if ReDU resolves 90%+)
+
+---
+
 ## v0.6.0 candidates — deferred fuzzy/ML items from audit-2
 
 These two audit-2 follow-ups did not ship in v0.5.0 because each needs a
