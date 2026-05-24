@@ -9,6 +9,8 @@ def test_metabolomics_prefixes_complete():
         "CHEBI":     "http://purl.obolibrary.org/obo/CHEBI_",
         "HMDB":      "https://hmdb.ca/metabolites/",
         "MTBLS":     "https://www.ebi.ac.uk/metabolights/",
+        "MW":        "https://www.metabolomicsworkbench.org/data/DRCCStudySummary.php?Mode=SetupRawDataDownload&StudyID=",
+        "MSV":       "https://massive.ucsd.edu/ProteoSAFe/dataset.jsp?accession=",
         "KEGG":      "https://www.kegg.jp/entry/",
         "LIPIDMAPS": "https://www.lipidmaps.org/databases/lmsd/",
         "PUBCHEM":   "https://pubchem.ncbi.nlm.nih.gov/compound/",
@@ -17,6 +19,15 @@ def test_metabolomics_prefixes_complete():
         "NCBITaxon": "http://purl.obolibrary.org/obo/NCBITaxon_",
         "ENVO":      "http://purl.obolibrary.org/obo/ENVO_",
     }
+
+
+def test_metabolomics_repository_prefixes_include_msv_mw_mtbls():
+    """v0.3.1: audit found ASB metabolomics_metadata.data_accessions are
+    dominated by MSV (MassIVE) and ST### (Metabolomics Workbench Study)
+    accessions — both must be representable as CURIEs by the adapter."""
+    for p in ("MTBLS", "MW", "MSV"):
+        assert p in ns.METABOLOMICS_PREFIXES
+        assert ns.METABOLOMICS_PREFIXES[p].startswith("https://")
 
 
 def test_metabokg_prefixes_complete():

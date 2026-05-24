@@ -38,7 +38,12 @@ def test_ontology_prefixes_keys():
     assert "CHEBI" in keys
     assert "HMDB" in keys
     assert "REFMET" in keys
-    assert len(keys) == 10
+    # v0.3.1: MSV (MassIVE) + MW (Metabolomics Workbench Study) added per audit;
+    # ASB metabolomics_metadata.data_accessions are dominated by these prefixes.
+    assert "MTBLS" in keys
+    assert "MW" in keys
+    assert "MSV" in keys
+    assert len(keys) == 12
 
 
 def test_extraction_context_mentions_domain():
@@ -97,3 +102,31 @@ def test_shacl_shapes_returns_non_empty_graph():
     g = MetabolomicsAdapter().shacl_shapes()
     assert isinstance(g, rdflib.Graph)
     assert len(g) > 0
+
+
+def test_enrich_claim_accepts_curie_subject():
+    """v0.3.1: subjects that are already CURIEs (e.g. CHEBI:17234) must enrich.
+
+    Audit finding #3: LLM extractors and mzTab SML rows often emit subjects
+    directly as CURIEs. The compound TSV ships full cross-references; the
+    adapter must serve them on CURIE input, not only on bare names.
+    """
+    claim = {
+        "subject": "CHEBI:17234", "qualifier": "identifies", "object": "",
+        "ontology_terms": {}, "evidence_id": "x",
+    }
+    out = MetabolomicsAdapter().enrich_claim(claim)
+    assert out["ontology_terms"]["subject"] == "CHEBI:17234"
+    # Cross-refs populated from the same row.
+    assert out["xrefs"]["subject"]["wikidata"] == "WD:Q37525"
+
+
+def test_enrich_claim_accepts_wd_curie_subject():
+    """Wikidata QIDs as subjects should also resolve to the cross-ref row."""
+    claim = {
+        "subject": "WD:Q37525", "qualifier": "identifies", "object": "",
+        "ontology_terms": {}, "evidence_id": "x",
+    }
+    out = MetabolomicsAdapter().enrich_claim(claim)
+    # Principal CURIE order picks CHEBI when present.
+    assert out["ontology_terms"]["subject"] == "CHEBI:17234"

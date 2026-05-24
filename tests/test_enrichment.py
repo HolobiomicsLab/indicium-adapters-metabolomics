@@ -76,6 +76,46 @@ def test_refmet_name_populated_for_well_known_metabolites():
     )
 
 
+def test_lookup_by_curie_chebi():
+    """v0.3.1: subjects already in CURIE form must resolve to the full row.
+
+    Audit finding: enrich_claim() previously only keyed on name_lower so a
+    CURIE-shaped subject like 'CHEBI:17234' returned an empty enrichment even
+    though the bundled TSV contains the full cross-reference row. Indexing by
+    CURIE lets downstream consumers (LLM extractors that emit CURIEs directly,
+    mzTab SML rows whose database_identifier is a CURIE) get the same xref
+    expansion as name-keyed lookups.
+    """
+    row = COMPOUND_INDEX.lookup("CHEBI:17234")
+    assert row is not None
+    assert row["name_lower"] == "glucose"
+
+
+def test_lookup_by_curie_is_case_insensitive_on_prefix():
+    """CURIE prefix matching tolerates the lowercase form ('chebi:17234')."""
+    assert COMPOUND_INDEX.lookup("chebi:17234") is not None
+
+
+def test_lookup_by_curie_hmdb_bare_id():
+    """HMDB IDs are stored bare in the TSV ('HMDB0000122'); the by-CURIE
+    index normalises them so 'HMDB:HMDB0000122' resolves."""
+    row = COMPOUND_INDEX.lookup("HMDB:HMDB0000122")
+    assert row is not None
+    assert (row.get("hmdb") or "").endswith("HMDB0000122")
+
+
+def test_lookup_by_curie_wikidata():
+    """WD CURIEs are stored prefixed in the TSV; lookup must resolve them."""
+    row = COMPOUND_INDEX.lookup("WD:Q37525")
+    assert row is not None
+    assert row["chebi"] == "CHEBI:17234"
+
+
+def test_lookup_by_curie_unknown_returns_none():
+    """Garbage CURIE (well-formed prefix, non-existent ID) returns None."""
+    assert COMPOUND_INDEX.lookup("CHEBI:99999999999") is None
+
+
 def test_lazy_load_only_once():
     """Loading is idempotent."""
     fresh = CompoundIndex()
