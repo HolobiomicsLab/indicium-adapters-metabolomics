@@ -27,10 +27,24 @@ def test_qualifiers_are_frozenset_with_expected_members():
     a = MetabolomicsAdapter()
     assert isinstance(a.qualifiers, frozenset)
     assert a.qualifiers == frozenset({
+        # Claim-level
         "identifies", "quantifies", "is_biomarker_for",
         "discriminates_between", "metabolizes",
         "co_occurs_with", "found_in_organism", "found_in_environment",
+        # Study-level (v0.4.0)
+        "has_processing_software", "analyzed_with", "acquired_in_mode",
+        "chromatographed_on", "uses_mass_analyzer",
     })
+
+
+def test_study_level_qualifiers_present():
+    """v0.4.0: 5 study-level qualifiers cover ASB heuristic metabolomics_metadata
+    fields (processing_software, instrument, ionization_mode,
+    chromatography_type, mass_analyzer). Closes audit finding #6."""
+    a = MetabolomicsAdapter()
+    for q in ("has_processing_software", "analyzed_with", "acquired_in_mode",
+              "chromatographed_on", "uses_mass_analyzer"):
+        assert q in a.qualifiers
 
 
 def test_ontology_prefixes_keys():

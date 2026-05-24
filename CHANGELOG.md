@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] — 2026-05-24
+
+Closes the three deferred audit findings carried over from v0.3.1.
+
+### Added
+- **5 study-level qualifiers** in `MetabolomicsAdapter.qualifiers`:
+  `has_processing_software`, `analyzed_with`, `acquired_in_mode`,
+  `chromatographed_on`, `uses_mass_analyzer`. These cover the
+  `processing_software`, `instrument`, `ionization_mode`,
+  `chromatography_type`, and `mass_analyzer` fields ASB's heuristic
+  metabolomics pipeline already extracts — previously the adapter had no
+  qualifier vocabulary for any of them. `extraction_context()` is updated.
+  Qualifier count: Metabolomics 8 → 13; composed union 28 → 33.
+- **Compound-name synonym layer** at `data/_synonyms.json` (~30 high-
+  confidence entries). Synonyms are aliased into `CompoundIndex._by_name`
+  at load time so `lookup()` resolves `"indole-3-acetic acid"`, `"IAA"`,
+  `"ATP"`, `"vitamin b12"`, `"EGCG"`, `"acetylsalicylic acid"`, `"DHA"`,
+  `"vitamin c"` (→ ascorbic acid), etc. directly to the canonical row.
+  Every alias target is verified against the TSV at load time; unknown
+  targets are silently skipped (defensive against TSV regeneration).
+- **`ClaimRequiredFieldsShape`** in the base SHACL shapes — every
+  `asb:Claim` must carry at least one `asb:subject` AND one `asb:qualifier`
+  at `sh:Violation`. Lives on `MetabolomicsAdapter.shacl_shapes()` (the
+  family base) so the composed graph carries it exactly once.
+
+### Changed
+- **`MetabolomicsClaimCurieShape` bumped from `sh:Warning` to `sh:Violation`**
+  per audit finding #4. CURIE-format failures on `asb:subject_ontology_term`
+  / `asb:object_ontology_term` now flip `conforms` to `False` instead of
+  being silently swallowed by the typical `allow_warnings=True` invocation.
+  Prefix vocabulary expanded to include the v0.3.1 additions
+  (`MW`, `MSV`).
+- **SHACL test helper `_claim_graph`** now injects placeholder `asb:subject`
+  + `asb:qualifier` by default so per-qualifier shape tests stay focused on
+  the rule they're exercising. Pass `inject_defaults=False` to exercise the
+  required-fields shape directly.
+
+### Tests
+- 99 passing on Py 3.13 at 99.3% coverage (was 92 at 99.6%).
+
 ## [0.3.1] — 2026-05-24
 
 ### Added

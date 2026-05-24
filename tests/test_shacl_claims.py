@@ -28,10 +28,20 @@ from indicium_adapters_metabolomics import (
 ASB = "https://asb.holobiomics.org/ns/asb#"
 
 
-def _claim_graph(triples: list[tuple[str, str, str]]) -> rdflib.Graph:
+def _claim_graph(
+    triples: list[tuple[str, str, str]],
+    inject_defaults: bool = True,
+) -> rdflib.Graph:
     """Build a tiny graph of asb:Claim assertions from (s,p,o) tuples.
 
     All strings are CURIE-strings or literals.
+
+    Since v0.4.0 the base `ClaimRequiredFieldsShape` enforces presence of
+    asb:subject and asb:qualifier at sh:Violation. To keep prior per-qualifier
+    test cases focused on the rule they're exercising, this helper injects
+    placeholder asb:subject="claim-sample" and asb:qualifier="x" iff the
+    caller didn't supply them. Tests that specifically want to exercise the
+    required-fields shape pass `inject_defaults=False`.
     """
     g = rdflib.Graph()
     g.bind("asb", ASB)
@@ -50,6 +60,15 @@ def _claim_graph(triples: list[tuple[str, str, str]]) -> rdflib.Graph:
             first_subject if first_subject.startswith("http") else f"{ASB}{first_subject}"
         )
         g.add((s0, rdflib.RDF.type, rdflib.URIRef(f"{ASB}Claim")))
+        if inject_defaults:
+            have_subject = any(p == "subject" for _, p, _ in triples)
+            have_qualifier = any(p == "qualifier" for _, p, _ in triples)
+            if not have_subject:
+                g.add((s0, rdflib.URIRef(f"{ASB}subject"),
+                       rdflib.Literal("claim-sample")))
+            if not have_qualifier:
+                g.add((s0, rdflib.URIRef(f"{ASB}qualifier"),
+                       rdflib.Literal("identifies")))
     return g
 
 
@@ -64,19 +83,66 @@ def test_metabolomics_conforming_claim_passes():
     assert conforms is True
 
 
-def test_metabolomics_malformed_curie_warns():
-    """An unrecognised prefix triggers the sh:Warning shape; with allow_warnings=True
-    conforms stays True but the report names the unrecognised value."""
+def test_metabolomics_malformed_curie_violates():
+    """v0.4.0: unrecognized prefix is now sh:Violation, not sh:Warning.
+
+    Closes audit finding #4: the prior sh:Warning + allow_warnings=True meant
+    a CURIE with a bogus prefix passed conformance silently. After the bump,
+    the report contains a hard violation and `conforms` is False.
+    """
     data = _claim_graph([
         ("claim/2", "subject_ontology_term", "WEIRD:12345"),
     ])
     shapes = MetabolomicsAdapter().shacl_shapes()
-    # allow_warnings=True: sh:Warning results do not flip conforms to False
     conforms, _, report = pyshacl.validate(data_graph=data, shacl_graph=shapes,
                                             inference="none", advanced=False,
                                             allow_warnings=True)
-    assert conforms is True
+    assert conforms is False
     assert "MetabolomicsClaimCurieShape" in report or "WEIRD" in report
+
+
+def test_metabolomics_missing_subject_violates():
+    """v0.4.0 ClaimRequiredFieldsShape: a Claim without asb:subject violates."""
+    data = _claim_graph(
+        [("claim/missing-subj", "qualifier", "identifies")],
+        inject_defaults=False,
+    )
+    shapes = MetabolomicsAdapter().shacl_shapes()
+    conforms, _, report = pyshacl.validate(
+        data_graph=data, shacl_graph=shapes, inference="none", advanced=False,
+    )
+    assert conforms is False
+    assert "ClaimRequiredFieldsShape" in report or "asb:subject" in report
+
+
+def test_metabolomics_missing_qualifier_violates():
+    """v0.4.0 ClaimRequiredFieldsShape: a Claim without asb:qualifier violates."""
+    data = _claim_graph(
+        [("claim/missing-q", "subject", "glucose")],
+        inject_defaults=False,
+    )
+    shapes = MetabolomicsAdapter().shacl_shapes()
+    conforms, _, report = pyshacl.validate(
+        data_graph=data, shacl_graph=shapes, inference="none", advanced=False,
+    )
+    assert conforms is False
+    assert "ClaimRequiredFieldsShape" in report or "asb:qualifier" in report
+
+
+def test_metabolomics_well_formed_claim_passes_required_fields():
+    """v0.4.0: a Claim with subject + qualifier present clears the new shape."""
+    data = _claim_graph(
+        [
+            ("claim/ok", "subject", "glucose"),
+            ("claim/ok", "qualifier", "identifies"),
+        ],
+        inject_defaults=False,
+    )
+    shapes = MetabolomicsAdapter().shacl_shapes()
+    conforms, _, _ = pyshacl.validate(
+        data_graph=data, shacl_graph=shapes, inference="none", advanced=False,
+    )
+    assert conforms is True
 
 
 def test_metabokg_annotation_level_valid_passes():
