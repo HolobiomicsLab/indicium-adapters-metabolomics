@@ -6,7 +6,9 @@ plant traits, body-part qualified observations).
 """
 from __future__ import annotations
 
+import json
 import re
+from functools import lru_cache
 from importlib.resources import files
 from typing import Final
 
@@ -16,33 +18,29 @@ from indicium_adapters_metabolomics._namespaces import EMI_PREFIXES
 
 _WIKIDATA_QID_PATTERN: Final[re.Pattern[str]] = re.compile(r"^Q\d+$")
 
-# Subset of plant-part names → PO: CURIEs (~10 common parts; expand in roadmap).
-_PLANT_PARTS: Final[dict[str, str]] = {
-    "leaf":           "PO:0025034",
-    "stem":           "PO:0009047",
-    "root":           "PO:0009005",
-    "flower":         "PO:0009046",
-    "fruit":          "PO:0009001",
-    "seed":           "PO:0009010",
-    "bark":           "PO:0004518",
-    "wood":           "PO:0005352",
-    "bud":            "PO:0000055",
-    "inflorescence":  "PO:0009049",
-}
 
-# Subset of interaction types → RO: / emi: CURIEs.
-_INTERACTION_TYPES: Final[dict[str, str]] = {
-    "pollination":   "RO:0002455",   # pollinates
-    "parasitism":    "RO:0002444",   # parasite of
-    "predation":     "RO:0002458",   # preys on
-    "herbivory":     "RO:0002470",   # eats
-    "symbiosis":     "RO:0002439",   # in symbiosis with
-    "mutualism":     "RO:0002442",   # mutualistically interacts with
-    "commensalism":  "RO:0002441",   # commensally interacts with
-    "competition":   "RO:0002419",   # competitor of
-    "hyperparasitism": "RO:0002553", # hyperparasite of
-    "allelopathy":   "emi:Allelopathy",
-}
+@lru_cache(maxsize=1)
+def _load_plant_parts() -> dict[str, str]:
+    """Lazy-load PO plant-part map from bundled JSON (~1363 entries at v0.2.0)."""
+    path = files("indicium_adapters_metabolomics.data").joinpath("_po_terms.json")
+    return json.loads(path.read_text())
+
+
+@lru_cache(maxsize=1)
+def _load_interaction_types() -> dict[str, str]:
+    """Lazy-load RO biotic-interaction map from bundled JSON (~13 entries at v0.2.0)."""
+    path = files("indicium_adapters_metabolomics.data").joinpath("_ro_terms.json")
+    return json.loads(path.read_text())
+
+
+@lru_cache(maxsize=1)
+def _load_wd_organisms() -> dict[str, dict[str, str]]:
+    """Lazy-load Wikidata top organisms (~200 entries at v0.2.0).
+
+    Keys: lowercase organism label. Values: {'qid': 'Q...', 'label': 'Original Label'}.
+    """
+    path = files("indicium_adapters_metabolomics.data").joinpath("_wd_organisms.json")
+    return json.loads(path.read_text())
 
 
 class EMIAdapter:
@@ -98,13 +96,23 @@ class EMIAdapter:
         obj = (claim.get("object") or "").strip().lower()
 
         if qual == "found_in_plant_part":
-            if curie := _PLANT_PARTS.get(obj):
+            if curie := _load_plant_parts().get(obj):
                 claim.setdefault("ontology_terms", {})["object"] = curie
 
         elif qual in {"mediates_interaction", "interacts_with",
                       "parasitizes", "pollinates"}:
-            if curie := _INTERACTION_TYPES.get(obj):
+            if curie := _load_interaction_types().get(obj):
                 claim.setdefault("ontology_terms", {})["object"] = curie
+
+        # New in v0.2.0: organism-label → WD:Qxxx lookup
+        for slot in ("subject", "object"):
+            if slot in claim.get("ontology_terms", {}):
+                continue   # already tagged (e.g. by QID-pattern detection earlier)
+            val = (claim.get(slot) or "").strip().lower()
+            if not val:
+                continue
+            if hit := _load_wd_organisms().get(val):
+                claim.setdefault("ontology_terms", {})[slot] = f"WD:{hit['qid']}"
 
         return claim
 

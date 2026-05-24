@@ -5,7 +5,9 @@ MSI annotation confidence levels, and provenance to GNPS analyses.
 """
 from __future__ import annotations
 
+import json
 import re
+from functools import lru_cache
 from importlib.resources import files
 from typing import Final
 
@@ -13,20 +15,12 @@ import rdflib
 
 from indicium_adapters_metabolomics._namespaces import METABOKG_PREFIXES
 
-# Subset of NPC pathway/class names → NPC: CURIEs.
-# Source: ~/git/earth_metabolome_ontology/npc_taxonomy.ttl (hand-curated subset).
-_NPC_PATHWAYS: Final[dict[str, str]] = {
-    "terpenoids":        "NPC:0000001",
-    "alkaloids":         "NPC:0000002",
-    "polyketides":       "NPC:0000003",
-    "phenylpropanoids":  "NPC:0000004",
-    "flavonoids":        "NPC:0000005",
-    "fatty acids":       "NPC:0000006",
-    "amino acids and peptides": "NPC:0000007",
-    "carbohydrates":     "NPC:0000008",
-    "steroids":          "NPC:0000009",
-    "shikimates":        "NPC:0000010",
-}
+
+@lru_cache(maxsize=1)
+def _load_npc_pathways() -> dict[str, str]:
+    """Lazy-load NPC term map from bundled JSON (~771 entries at v0.2.0)."""
+    path = files("indicium_adapters_metabolomics.data").joinpath("_npc_terms.json")
+    return json.loads(path.read_text())
 
 _ANNOTATION_LEVELS: Final[frozenset[str]] = frozenset({
     "level_1", "level_2", "level_3",
@@ -74,7 +68,7 @@ class MetaboKGAdapter:
         obj = (claim.get("object") or "").strip()
 
         if qual == "classified_as":
-            if curie := _NPC_PATHWAYS.get(obj.lower()):
+            if curie := _load_npc_pathways().get(obj.lower()):
                 claim.setdefault("ontology_terms", {})["object"] = curie
 
         elif qual == "has_annotation_level":

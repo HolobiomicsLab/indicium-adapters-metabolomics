@@ -69,12 +69,12 @@ def test_enrich_interaction_type_known():
     claim = {
         "subject": "honey bee",
         "qualifier": "mediates_interaction",
-        "object": "pollination",
+        "object": "pollinates",
         "ontology_terms": {},
         "evidence_id": "x",
     }
     out = EMIAdapter().enrich_claim(claim)
-    # Should resolve "pollination" to an RO or emi: CURIE
+    # Should resolve "pollinates" to an RO or emi: CURIE
     assert out["ontology_terms"]["object"].startswith(("RO:", "emi:"))
 
 
@@ -88,3 +88,24 @@ def test_shacl_shapes_returns_graph():
     g = EMIAdapter().shacl_shapes()
     assert isinstance(g, rdflib.Graph)
     assert len(g) > 0
+
+
+def test_enrich_wd_organism_by_label():
+    """A common organism name from the bundled WD list should resolve to WD:Qxxx."""
+    import json
+    from importlib.resources import files
+    wd = json.loads(
+        files("indicium_adapters_metabolomics.data").joinpath("_wd_organisms.json").read_text()
+    )
+    # Pick any known organism label from the bundled JSON
+    sample_label = next(iter(wd.keys()))
+    sample_qid = wd[sample_label]["qid"]
+    claim = {
+        "subject": sample_label,   # use the label as-is (lowercase)
+        "qualifier": "found_in_species",
+        "object": "",
+        "ontology_terms": {},
+        "evidence_id": "x",
+    }
+    out = EMIAdapter().enrich_claim(claim)
+    assert out["ontology_terms"].get("subject") == f"WD:{sample_qid}"
