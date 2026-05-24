@@ -443,6 +443,251 @@ def test_high_level_with_all_views_combines_everything():
                   "structurally_related_to"}
 
 
+# --- v0.7.1 edge cases: clusters -------------------------------------------
+
+def test_clusters_skips_when_cluster_index_is_blank_string():
+    """An empty / whitespace cluster index is treated as missing, not zero."""
+    rows = [{"cluster index": "   ", "parent mass": "200.0"},
+            {"cluster index": "", "parent mass": "300.0"}]
+    assert parse_gnps_clusters(rows, TASK) == []
+
+
+def test_clusters_accepts_zero_cluster_index():
+    """`cluster index = "0"` is a legal scan id — must not be dropped."""
+    rows = [{"cluster index": "0", "parent mass": "100.0"}]
+    claims = parse_gnps_clusters(rows, TASK)
+    assert len(claims) == 1
+    assert claims[0]["object"].endswith(":scan:0")
+
+
+def test_clusters_missing_parent_mass_emits_claim_without_that_key():
+    """parent_mass absent → claim still emitted, evidence simply omits it."""
+    rows = [{"cluster index": "7", "RTMean": "12.5"}]
+    claims = parse_gnps_clusters(rows, TASK)
+    assert len(claims) == 1
+    ev = claims[0]["evidence"]
+    assert "parent_mass" not in ev
+    assert ev["rt_mean"] == 12.5
+
+
+def test_clusters_unparseable_floats_silently_dropped():
+    """RTMean = 'NA' / 'not-a-number' → field omitted, claim survives.
+    One real float survives so evidence is non-empty and emitted."""
+    rows = [{"cluster index": "12", "RTMean": "NA",
+             "parent mass": "not-a-number",
+             "componentindex": "abc",
+             "number of spectra": "5"}]
+    claims = parse_gnps_clusters(rows, TASK)
+    assert len(claims) == 1
+    ev = claims[0]["evidence"]
+    assert "rt_mean" not in ev
+    assert "parent_mass" not in ev
+    assert "component_index" not in ev
+    assert ev["num_spectra"] == 5.0
+
+
+def test_clusters_all_evidence_fields_blank_yields_evidence_omitted():
+    """Per `_claim`, evidence is omitted entirely when no fields populate."""
+    rows = [{"cluster index": "42"}]
+    claims = parse_gnps_clusters(rows, TASK)
+    assert len(claims) == 1
+    assert "evidence" not in claims[0]
+
+
+def test_clusters_library_id_without_spectrum_id_keeps_library_id():
+    """A cluster with a LibraryID but no SpectrumID still records the lib."""
+    rows = [{"cluster index": "99", "LibraryID": "lib-x", "Smiles": "CCO"}]
+    claims = parse_gnps_clusters(rows, TASK)
+    ev = claims[0]["evidence"]
+    assert ev["library_id"] == "lib-x"
+    assert ev["smiles"] == "CCO"
+    assert "spectrum_id" not in ev
+
+
+# --- v0.7.1 edge cases: network pairs --------------------------------------
+
+def test_pairs_self_loop_emitted_with_subject_equals_object():
+    """Self-loop (Node1==Node2) is *not* canonical-dropped — it's a valid
+    GNPS-side construct (a cluster that pairs with itself in MN edge
+    computation). We emit it with subject==object so downstream can decide."""
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "5", "Node2": "5", "Cos_Score": "1.0", "MzDiff": "0.0"}],
+        TASK)
+    assert len(claims) == 1
+    assert claims[0]["subject"] == claims[0]["object"]
+    assert claims[0]["evidence"]["cos_score"] == 1.0
+
+
+def test_pairs_missing_cos_score_emits_claim_without_evidence_key():
+    """No Cos_Score → key omitted, claim still emitted."""
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "1", "Node2": "2"}], TASK)
+    assert len(claims) == 1
+    assert "evidence" not in claims[0]  # both cos + mz empty → evidence omitted
+
+
+def test_pairs_mzdiff_only_emits_claim_with_only_mz_diff():
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "1", "Node2": "2", "MzDiff": "14.0"}], TASK)
+    ev = claims[0]["evidence"]
+    assert ev == {"mz_diff": 14.0}
+
+
+def test_pairs_unparseable_cos_score_silently_dropped():
+    """Cos_Score = 'NA' → field omitted, claim survives."""
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "1", "Node2": "2", "Cos_Score": "NA", "MzDiff": "garbage"}],
+        TASK)
+    assert len(claims) == 1
+    assert "evidence" not in claims[0]
+
+
+def test_pairs_only_one_node_present_is_dropped():
+    claims = parse_gnps_network_pairs(
+        [{"Node1": "1", "Cos_Score": "0.9"},
+         {"Node2": "2", "Cos_Score": "0.9"}], TASK)
+    assert claims == []
+
+
+def test_pairs_source_doi_passthrough():
+    claims = parse_gnps_network_pairs(PAIRS["blockData"], TASK,
+                                      source_doi="10.5/x")
+    assert all(c["source_doi"] == "10.5/x" for c in claims)
+
+
+# --- v0.7.1 fetch edge cases (clusters/pairs parity) ----------------------
+
+def test_fetch_network_pairs_empty_task_returns_none():
+    """Parity with fetch_gnps_clusters_empty_task_returns_none."""
+    assert fetch_gnps_network_pairs("") is None
+    assert fetch_gnps_network_pairs("   ") is None
+
+
+def test_fetch_clusters_handles_network_error():
+    """Parity with fetch_gnps_network_pairs_handles_network_error."""
+    class _Err:
+        headers: dict = {}
+        def get(self, *a, **k):
+            raise __import__("requests").RequestException("boom")
+    assert fetch_gnps_clusters(TASK, session=_Err(), cache_dir=None) is None
+
+
+def test_fetch_clusters_rejects_invalid_json():
+    """Parity with fetch_gnps_network_pairs_rejects_invalid_json."""
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            class R:
+                status_code = 200
+                text = "<html>not json</html>"
+            return R()
+    assert fetch_gnps_clusters(TASK, session=_S(), cache_dir=None) is None
+
+
+def test_fetch_network_pairs_rejects_non_200():
+    """Parity with fetch_gnps_clusters_rejects_non_200."""
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            class R:
+                status_code = 502
+                text = ""
+            return R()
+    assert fetch_gnps_network_pairs(TASK, session=_S(), cache_dir=None) is None
+
+
+def test_fetch_view_rejects_non_dict_response():
+    """`_fetch_view` requires `dict` — a JSON array body must be rejected."""
+    class _S:
+        headers: dict = {}
+        def get(self, *a, **k):
+            class R:
+                status_code = 200
+                text = "[1, 2, 3]"  # valid JSON, wrong shape
+            return R()
+    assert fetch_gnps_clusters(TASK, session=_S(), cache_dir=None) is None
+    assert fetch_gnps_network_pairs(TASK, session=_S(), cache_dir=None) is None
+
+
+def test_fetch_clusters_corrupt_cache_falls_through_to_network(tmp_path):
+    """A corrupt cache file is ignored — we attempt the network call.
+    Without a session we'll get a real-ish failure but the cache should NOT
+    propagate its parse error. We assert the function returns None gracefully
+    instead of raising."""
+    from indicium_adapters_metabolomics.gnps.parser import _cache_path
+
+    p = _cache_path((TASK, "view_all_clusters_withID_beta"), tmp_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("{ not valid json", encoding="utf-8")
+
+    class _ErrAfterCacheMiss:
+        headers: dict = {}
+        def get(self, *a, **k):
+            raise __import__("requests").RequestException("boom")
+
+    out = fetch_gnps_clusters(TASK, session=_ErrAfterCacheMiss(), cache_dir=tmp_path)
+    assert out is None
+
+
+def test_fetch_annotations_corrupt_cache_falls_through(tmp_path):
+    """Same parity for the annotations fetcher's cache-fallthrough branch."""
+    from indicium_adapters_metabolomics.gnps.parser import _cache_path
+
+    p = _cache_path((TASK, "view_all_annotations_DB"), tmp_path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("{ corrupt", encoding="utf-8")
+
+    class _Err:
+        headers: dict = {}
+        def get(self, *a, **k):
+            raise __import__("requests").RequestException("boom")
+    assert fetch_gnps_annotations(TASK, session=_Err(), cache_dir=tmp_path) is None
+
+
+# --- v0.7.1 high-level combiner edge cases ---------------------------------
+
+def test_high_level_views_kwarg_with_empty_tuple_returns_no_claims():
+    """`views=()` → projection emits nothing, no exceptions."""
+    out = gnps_task_to_claims(TASK, annotations_data=ANNOT, parameters_xml=XML,
+                              clusters_data=CLUSTERS, pairs_data=PAIRS,
+                              views=(), cache_dir=None)
+    assert out == []
+
+
+def test_high_level_with_pairs_view_only_emits_only_structurally_related_to():
+    out = gnps_task_to_claims(
+        TASK, pairs_data=PAIRS, views=("pairs",), cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert qs == {"structurally_related_to"}
+
+
+def test_high_level_with_unknown_view_silently_skipped():
+    """An unknown view in the tuple is ignored — no error."""
+    out = gnps_task_to_claims(
+        TASK, annotations_data=ANNOT, clusters_data=CLUSTERS,
+        views=("annotations", "bogus-view", "clusters"), cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert qs == {"spectral_match", "has_feature"}
+
+
+def test_high_level_source_doi_propagates_to_clusters_and_pairs():
+    """v0.7.0 added clusters+pairs; both must inherit source_doi."""
+    out = gnps_task_to_claims(
+        TASK, clusters_data=CLUSTERS, pairs_data=PAIRS,
+        views=("clusters", "pairs"), source_doi="10.5/x", cache_dir=None)
+    assert out and all(c["source_doi"] == "10.5/x" for c in out)
+
+
+def test_high_level_clusters_view_with_no_data_emits_nothing():
+    """clusters_data=None → fetch is bypassed when cache_dir=None +
+    session not supplied; gracefully emits no clusters claims."""
+    out = gnps_task_to_claims(
+        TASK, annotations_data=ANNOT, clusters_data={"blockData": []},
+        views=("annotations", "clusters"), cache_dir=None)
+    qs = {c["qualifier"] for c in out}
+    assert qs == {"spectral_match"}
+
+
 # --- Live smoke (gated) ----------------------------------------------------
 
 @pytest.mark.skipif(
