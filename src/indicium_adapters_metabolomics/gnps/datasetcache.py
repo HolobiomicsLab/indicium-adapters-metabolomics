@@ -17,9 +17,9 @@ Projection mapping:
 
 | uniquemri column       | Qualifier              | Object form               |
 |------------------------|------------------------|---------------------------|
-| MassAnalyzer           | uses_mass_analyzer     | semicolon-list literal    |
-| Ionization             | acquired_in_mode       | semicolon-list literal    |
-| instrument_model       | analyzed_with          | literal                   |
+| MassAnalyzer           | uses_mass_analyzer     | one claim per `;`-split   |
+| Ionization             | acquired_in_mode       | one claim per `;`-split   |
+| instrument_model       | analyzed_with          | literal (empty → skipped) |
 | instrument_vendor      | (folded into evidence) | -                         |
 | sample_type            | acquired_from_matrix   | literal (last-resort)     |
 
@@ -148,6 +148,29 @@ def fetch_datasetcache_row(
     return row
 
 
+def _split_semicolon_multi(value: str | None) -> list[str]:
+    """Datasetcache stores multi-valued fields as `a;b` (no spaces around `;`).
+
+    Split, strip, drop empties, de-duplicate while preserving order. Returns
+    `[]` for empty / sentinel inputs.
+    """
+    s = _clean(value)
+    if not s:
+        return []
+    seen: set[str] = set()
+    out: list[str] = []
+    for part in s.split(";"):
+        p = part.strip()
+        if not p or p.lower() in _EMPTY:
+            continue
+        key = p.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
 def datasetcache_row_to_claims(
     row: dict[str, Any],
     subject: str,
@@ -156,14 +179,26 @@ def datasetcache_row_to_claims(
 ) -> list[dict[str, Any]]:
     """Project a datasetcache row into the existing adapter qualifier vocab.
 
-    Pure function. Stable ordering: instrument → mass-analyzer → ionisation
-    → matrix.
+    Pure function. Stable ordering: instrument → mass-analyzers (split on `;`)
+    → ionisations (split on `;`) → matrix.
+
+    Multi-valued semicolon fields (`MassAnalyzer="orbitrap;quadrupole"`,
+    `Ionization="electrospray inlet;electrospray ionization"`) yield one
+    claim per value — downstream aggregation joins them back cleanly.
+
+    Per-file metadata caveat: `instrument_model` is sometimes empty on the
+    `uniquemri` row even when the dataset-level metadata (e.g. MetaboLights
+    landing page) lists a concrete model. We don't synthesise a model from
+    MassAnalyzer + vendor in that case; the empty cell is preserved by
+    silently emitting no `analyzed_with` claim. Callers needing the model
+    should fall back to ReDU's `MassSpectrometer` column or to MetaboLights.
     """
     claims: list[dict[str, Any]] = []
     if not row:
         return claims
 
-    # 1. Instrument model + vendor → analyzed_with (vendor in evidence)
+    # 1. Instrument model + vendor → analyzed_with (vendor in evidence).
+    #    Empty `instrument_model` is treated as missing (not an error).
     model = _clean(row.get("instrument_model"))
     vendor = _clean(row.get("instrument_vendor"))
     if model:
@@ -174,15 +209,13 @@ def datasetcache_row_to_claims(
                              evidence=evidence or None,
                              source_doi=source_doi))
 
-    # 2. Mass analyzer → uses_mass_analyzer
-    mass_analyzer = _clean(row.get("MassAnalyzer"))
-    if mass_analyzer:
-        claims.append(_claim(subject, "uses_mass_analyzer", mass_analyzer,
+    # 2. Mass analyzer(s) → uses_mass_analyzer (one claim per value).
+    for analyzer in _split_semicolon_multi(row.get("MassAnalyzer")):
+        claims.append(_claim(subject, "uses_mass_analyzer", analyzer,
                              source_doi=source_doi))
 
-    # 3. Ionisation → acquired_in_mode
-    ion = _clean(row.get("Ionization"))
-    if ion:
+    # 3. Ionisation(s) → acquired_in_mode (one claim per value).
+    for ion in _split_semicolon_multi(row.get("Ionization")):
         claims.append(_claim(subject, "acquired_in_mode", ion,
                              source_doi=source_doi))
 

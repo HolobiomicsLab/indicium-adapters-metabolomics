@@ -1,0 +1,16 @@
+{
+  "_meta": {
+    "description": "Tier-2 compound-name synonyms harvested via PubChem PUG-REST. Loaded after _synonyms.json. Targets are canonical names already present in refmet_compounds.tsv.",
+    "version": 1,
+    "source": "PubChem PUG-REST /compound/name/<n>/cids/JSON"
+  },
+  "(-)-epicatechin": "(\u2212)-epicatechin",
+  "acetate": "acetate ion",
+  "epicatechin": "(\u2212)-epicatechin",
+  "equol": "(-)-equol",
+  "kaempferol 3-O-glucoside": "astragalin",
+  "kaempferol-3-glucoside": "astragalin",
+  "quercetin 3-O-glucoside": "isoquercetin",
+  "quercetin-3-glucoside": "isoquercetin",
+  "salinosporamide a": "marizomib"
+}

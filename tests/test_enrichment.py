@@ -180,6 +180,33 @@ def test_synonym_layer_v0_5_0_domain_specific_aliases():
         assert a is t, f"{alias!r} resolved to a different row than {target!r}"
 
 
+def test_synonym_layer_v0_6_1_pubchem_tier2():
+    """v0.6.1: tier-2 synonyms harvested via PubChem PUG-REST close the 9
+    residual misses from audit-2's `domain_probes` (epicatechin acronyms,
+    quercetin/kaempferol glycosides, salinosporamide A, equol, acetate).
+
+    Both alias and canonical must resolve to the same row, matching the
+    tier-1 contract.
+    """
+    cases = {
+        "(-)-epicatechin":          "(−)-epicatechin",
+        "epicatechin":              "(−)-epicatechin",
+        "equol":                    "(-)-equol",
+        "kaempferol 3-O-glucoside": "astragalin",
+        "kaempferol-3-glucoside":   "astragalin",
+        "quercetin 3-O-glucoside":  "isoquercetin",
+        "quercetin-3-glucoside":    "isoquercetin",
+        "salinosporamide a":        "marizomib",
+        "acetate":                  "acetate ion",
+    }
+    for alias, target in cases.items():
+        a = COMPOUND_INDEX.lookup(alias)
+        t = COMPOUND_INDEX.lookup(target)
+        assert a is not None, f"tier-2 alias {alias!r} did not resolve"
+        assert t is not None, f"tier-2 canonical target {target!r} missing"
+        assert a is t, f"{alias!r} resolved to a different row than {target!r}"
+
+
 def test_lazy_load_only_once():
     """Loading is idempotent."""
     fresh = CompoundIndex()

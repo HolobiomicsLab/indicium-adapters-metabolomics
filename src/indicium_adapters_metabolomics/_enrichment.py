@@ -79,18 +79,28 @@ class CompoundIndex:
         # into `_by_name` to point at the same row, so lookup() needs no
         # extra logic. Targets are verified at load-time; unknown targets
         # are silently skipped (defensive against TSV regeneration).
-        syn_path = files("indicium_adapters_metabolomics.data").joinpath(
-            "_synonyms.json"
-        )
-        synonyms = json.loads(syn_path.read_text(encoding="utf-8"))
-        for alias, target in synonyms.items():
-            if alias.startswith("_"):  # skip _meta block
+        #
+        # Two tiers, applied in order:
+        #   tier 1 — `_synonyms.json` (hand-curated, verified)
+        #   tier 2 — `_synonyms_tier2.json` (PubChem PUG-REST harvest via
+        #            data/build_synonyms.py, present since v0.6.1)
+        # Tier-1 entries win on alias collision (setdefault below) so the
+        # hand-curated tier is authoritative.
+        for filename in ("_synonyms.json", "_synonyms_tier2.json"):
+            syn_path = files("indicium_adapters_metabolomics.data").joinpath(
+                filename
+            )
+            if not syn_path.is_file():
                 continue
-            target_l = target.strip().lower()
-            row = self._by_name.get(target_l)
-            if row is None:
-                continue
-            self._by_name.setdefault(alias.strip().lower(), row)
+            synonyms = json.loads(syn_path.read_text(encoding="utf-8"))
+            for alias, target in synonyms.items():
+                if alias.startswith("_"):  # skip _meta block
+                    continue
+                target_l = target.strip().lower()
+                row = self._by_name.get(target_l)
+                if row is None:
+                    continue
+                self._by_name.setdefault(alias.strip().lower(), row)
         self._loaded = True
 
     def lookup(self, query: str) -> dict[str, str] | None:

@@ -14,11 +14,13 @@ Public surface:
 from __future__ import annotations
 
 from indicium_adapters_metabolomics.redu.parser import (
+    REDU_GH_LIST_URL,
     REDU_GH_TSV_URL,
+    list_redu_msvs,
     redu_lookup,
     redu_sample_to_claims,
     redu_to_claims,
 )
 
-__all__ = ["REDU_GH_TSV_URL", "redu_lookup", "redu_sample_to_claims",
-           "redu_to_claims"]
+__all__ = ["REDU_GH_LIST_URL", "REDU_GH_TSV_URL", "list_redu_msvs",
+           "redu_lookup", "redu_sample_to_claims", "redu_to_claims"]

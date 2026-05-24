@@ -60,6 +60,12 @@ REDU_GH_TSV_URL = (
     "ReDU_metadata/main/metadata/{msv}.tsv"
 )
 
+# GitHub Contents API for listing the per-MSV TSVs available in the snapshot.
+REDU_GH_LIST_URL = (
+    "https://api.github.com/repos/Wang-Bioinformatics-Lab/"
+    "ReDU_metadata/contents/metadata?ref=main"
+)
+
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "indicium-adapters-metabolomics" / "redu"
 USER_AGENT = (
     "indicium-adapters-metabolomics/0.6.0 redu "
@@ -167,6 +173,17 @@ def redu_lookup(
 
     Returns None on 404 (MSV not in the metadata snapshot), network
     failure, or no matching filename row in the TSV.
+
+    Snapshot coverage caveat
+    ------------------------
+    The GH snapshot is curated and partial — at the time of writing it
+    holds ~292 MSV deposits, biased toward older studies (MSV0000797xx
+    through ~MSV000088xxx are well-represented; many newer MSVs are not).
+    Use :func:`list_redu_msvs` to check coverage up front, or fall back to
+    :mod:`indicium_adapters_metabolomics.gnps.datasetcache` for MS-
+    operational metadata (instrument, mass analyzer, ionisation) when ReDU
+    misses — datasetcache covers the full public MassIVE catalogue but
+    lacks the biological sample metadata.
     """
     msv, basename = _msv_and_relpath(filename)
     if not msv:
@@ -180,6 +197,63 @@ def redu_lookup(
     if not tsv_text:
         return None
     return _row_for_filename(tsv_text, basename)
+
+
+def list_redu_msvs(
+    *,
+    session: requests.Session | None = None,
+    cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+    timeout: float = 15.0,
+) -> list[str] | None:
+    """Return the sorted list of MSV accessions present in the GH snapshot.
+
+    Hits the GitHub Contents API once, caches the result to
+    `<cache_dir>/_msv_listing.json`. Returns None on network failure.
+
+    Useful before bulk runs to skip MSVs that are known to be missing from
+    the snapshot (saves one 404 per file). Example:
+
+        known = set(list_redu_msvs() or ())
+        for fp in filepaths:
+            msv = fp.split('/')[0].removeprefix('f.')
+            if msv in known:
+                row = redu_lookup(fp)
+                ...
+    """
+    import json as _json
+
+    cache_path: Path | None = None
+    if cache_dir is not None:
+        cache_path = Path(cache_dir) / "_msv_listing.json"
+        if cache_path.exists():
+            try:
+                return _json.loads(cache_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+
+    sess = session or requests.Session()
+    sess.headers.setdefault("User-Agent", USER_AGENT)
+    try:
+        r = sess.get(REDU_GH_LIST_URL, timeout=timeout)
+    except requests.RequestException:
+        return None
+    if r.status_code != 200:
+        return None
+    try:
+        items = r.json()
+    except ValueError:
+        return None
+    msvs = sorted(
+        item["name"].removesuffix(".tsv")
+        for item in items
+        if isinstance(item, dict)
+        and item.get("type") == "file"
+        and (item.get("name") or "").endswith(".tsv")
+    )
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(_json.dumps(msvs, indent=2), encoding="utf-8")
+    return msvs
 
 
 def _clean(v: Any) -> str | None:

@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] — 2026-05-24
+
+Patch release driven by an end-to-end live-endpoint smoke test of the v0.6.0
+backends against three real public datasets (GNPS task
+`1ad7bc366aef45ce81d2dfcca0a9a5e7`, ReDU MSV000079777, GNPS2 datasetcache
+MSV000082048). All findings were closed in this release.
+
+### Changed
+- **`datasetcache_row_to_claims` now splits semicolon-multivalue fields**
+  into one claim per value (BREAKING for downstream consumers that relied on
+  the joined literal). `MassAnalyzer="orbitrap;quadrupole"` now yields TWO
+  `uses_mass_analyzer` claims (`orbitrap`, `quadrupole`); `Ionization=
+  "electrospray inlet;electrospray ionization"` yields TWO `acquired_in_mode`
+  claims. Case-insensitive dedup; whitespace tolerated. The MSV000082048 row
+  in the test fixture goes from 3 → 5 claims as a result.
+- **`parse_gnps_parameters` no longer emits a standalone `analyzed_with`
+  claim** carrying a concatenated tolerance literal (BREAKING for downstream
+  consumers reading that claim). Tolerances and thresholds (PM_tolerance,
+  Ion_tolerance, MIN_MATCHED_PEAKS, SCORE_THRESHOLD, PAIRS_MIN_COSINE) now
+  live as structured keys in the `evidence` dict on `has_processing_software`
+  — far easier to use downstream. The `analyzed_with` qualifier is now
+  reserved for actual instruments (sourced from datasetcache / ReDU /
+  mzTab), matching its definition.
+
+### Added
+- **`redu.list_redu_msvs()`** — caches a one-shot fetch of the GH Contents API
+  listing of `Wang-Bioinformatics-Lab/ReDU_metadata/main/metadata/` so
+  bulk pipelines can skip MSVs known to be missing from the snapshot (saves
+  one 404 per file). The snapshot is curated and partial (~292 MSVs at the
+  time of release, biased toward older deposits); the new docstring on
+  `redu_lookup` explains this and points at the datasetcache fallback for
+  MS-operational metadata on newer deposits.
+- **Tier-2 PubChem synonym layer** — `data/_synonyms_tier2.json` (9 entries)
+  harvested via `data/build_synonyms.py` (PubChem PUG-REST). Closes the 9
+  residual misses from audit-2's `domain_probes`: epicatechin acronyms,
+  quercetin/kaempferol glycosides (→ isoquercetin / astragalin),
+  salinosporamide A → marizomib, equol, acetate. Loaded by
+  `CompoundIndex._load()` after tier 1 so the hand-curated tier remains
+  authoritative on alias collision. Test
+  `test_synonym_layer_v0_6_1_pubchem_tier2` is the new harness for tier-2
+  drift checks.
+
+### Fixed
+- Docstring on `datasetcache_row_to_claims` now explicitly notes that
+  `instrument_model` can be empty on the per-file `uniquemri` row even when
+  the dataset-level metadata lists a concrete model; documents the
+  fall-back ladder (ReDU `MassSpectrometer` → MetaboLights landing page).
+
 ## [0.6.0] — 2026-05-24
 
 Lands four external-data integrations: a ReDU per-MSV metadata lookup, the
