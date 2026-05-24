@@ -18,6 +18,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Configure git auth for private cross-repo installs
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PAT }}
+        run: |
+          # Rewrite https://github.com/ to embed the PAT so pip-install-from-git
+          # can clone private HolobiomicsLab repos (indicium, indicium-adapters).
+          # Requires repo secret ORG_PAT — fine-grained PAT with Contents: Read
+          # on HolobiomicsLab/{indicium, indicium-adapters, indicium-adapters-metabolomics}.
+          git config --global url."https://x-access-token:${GH_TOKEN}@github.com/".insteadOf "https://github.com/"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
