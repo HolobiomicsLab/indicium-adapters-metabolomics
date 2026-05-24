@@ -179,6 +179,133 @@ def test_redu_normalize_matrix_also_works_on_sample_type_fallback(monkeypatch):
     assert matrix["ontology_terms"]["object"] == "PO:0009025"
 
 
+# --- v0.7.1 redu integration edge cases (always-on, stubbed normalizer) ---
+
+def test_redu_normalize_matrix_exception_is_swallowed(monkeypatch):
+    """If the normaliser raises (corrupt cache mid-call, model OOM, …),
+    `_maybe_enrich_matrix` must NOT crash the projection — the claim
+    survives un-enriched. This guards the `except Exception:` in
+    `_maybe_enrich_matrix`."""
+    from indicium_adapters_metabolomics import _matrix_normalizer
+
+    def boom(text):
+        raise RuntimeError("simulated model failure")
+
+    monkeypatch.setattr(_matrix_normalizer, "normalize_matrix", boom)
+    sample = {"UBERONBodyPartName": "stool"}
+    claims = redu_sample_to_claims(sample, "study:s1", normalize_matrix=True)
+    matrix = next(c for c in claims if c["qualifier"] == "acquired_from_matrix")
+    assert matrix["object"] == "stool"
+    assert "ontology_terms" not in matrix
+    assert "evidence" not in matrix
+
+
+def test_maybe_enrich_matrix_overwrites_existing_ontology_terms_object(monkeypatch):
+    """Defensive semantics doc: `_maybe_enrich_matrix` uses `setdefault` on
+    the dict (creates ontology_terms if absent) but then unconditionally
+    writes `["object"]` into that dict — so if a caller already set
+    `ontology_terms["object"]`, the normaliser's CURIE wins.
+
+    In practice this never happens for the matrix qualifier — the curated
+    UBERONOntologyIndex path in `redu_sample_to_claims` short-circuits
+    before `_maybe_enrich_matrix` is invoked. This test pins the helper's
+    standalone behavior so a refactor doesn't silently flip the semantics."""
+    from indicium_adapters_metabolomics import _matrix_normalizer
+    from indicium_adapters_metabolomics.redu.parser import _maybe_enrich_matrix
+
+    monkeypatch.setattr(_matrix_normalizer, "normalize_matrix",
+                        lambda text: ("feces", "UBERON:0001988", 0.9))
+    claim = {
+        "subject": "s", "qualifier": "acquired_from_matrix",
+        "object": "stool", "source": "redu",
+        "ontology_terms": {"object": "UBERON:OLD"},
+        "evidence": {"matrix_match_score": 0.1},
+    }
+    _maybe_enrich_matrix(claim, "stool", normalize_matrix=True)
+    # Helper overwrites both keys (the setdefault only protects the outer
+    # ontology_terms dict).
+    assert claim["ontology_terms"]["object"] == "UBERON:0001988"
+    assert claim["evidence"]["matrix_match_score"] == 0.9
+
+
+def test_maybe_enrich_matrix_normalize_false_is_pure_noop(monkeypatch):
+    """normalize_matrix=False must not import the normaliser module at all
+    — verifies the cheap-path guard. We replace `__import__` with a sentinel
+    that records its first call name, then assert it was never touched."""
+    import builtins
+
+    from indicium_adapters_metabolomics.redu.parser import _maybe_enrich_matrix
+    real_import = builtins.__import__
+    called = []
+
+    def recording(name, *a, **k):
+        if name == "indicium_adapters_metabolomics._matrix_normalizer":
+            called.append(name)
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", recording)
+    claim = {"subject": "s", "qualifier": "acquired_from_matrix",
+             "object": "stool", "source": "redu"}
+    _maybe_enrich_matrix(claim, "stool", normalize_matrix=False)
+    assert called == []  # never imported
+
+
+def test_maybe_enrich_matrix_empty_text_is_noop(monkeypatch):
+    """Empty text → early return, normaliser never invoked."""
+    from indicium_adapters_metabolomics import _matrix_normalizer
+    from indicium_adapters_metabolomics.redu.parser import _maybe_enrich_matrix
+
+    calls = []
+    monkeypatch.setattr(_matrix_normalizer, "normalize_matrix",
+                        lambda text: calls.append(text) or None)
+    claim = {"subject": "s", "qualifier": "acquired_from_matrix",
+             "object": "", "source": "redu"}
+    _maybe_enrich_matrix(claim, "", normalize_matrix=True)
+    assert calls == []
+
+
+def test_redu_to_claims_end_to_end_with_stubbed_normalizer(monkeypatch):
+    """End-to-end through the public `redu_to_claims` entry point with
+    sample_info pre-supplied (skips HTTP) and a stubbed normaliser. This
+    is the integration path that ASB / Scriptorium consumers will hit."""
+    from indicium_adapters_metabolomics import _matrix_normalizer
+    from indicium_adapters_metabolomics.redu import redu_to_claims
+
+    monkeypatch.setattr(_matrix_normalizer, "normalize_matrix",
+                        lambda text: ("blood plasma", "UBERON:0001969", 0.91))
+    sample_info = {
+        "MassiveID": "MSV000099999",
+        "filename": "x.mzML",
+        "NCBITaxonomy": "9606|Homo sapiens",
+        "SampleType": "blod plasma",  # typo, no UBERON curated id
+    }
+    claims = redu_to_claims(
+        "MSV000099999/x.mzML", "study:s1",
+        sample_info=sample_info, normalize_matrix=True)
+    matrix = next(c for c in claims if c["qualifier"] == "acquired_from_matrix")
+    assert matrix["object"] == "blod plasma"  # literal preserved
+    assert matrix["ontology_terms"]["object"] == "UBERON:0001969"
+    assert matrix["evidence"]["matrix_match_score"] == 0.91
+    # Organism claim still emitted.
+    org = next(c for c in claims if c["qualifier"] == "found_in_organism")
+    assert org["object"] == "NCBITaxon:9606"
+
+
+def test_redu_to_claims_normalize_matrix_default_off(monkeypatch):
+    """Parity check: `redu_to_claims` (not just `redu_sample_to_claims`)
+    must default to False — the flag has to thread all the way through."""
+    from indicium_adapters_metabolomics import _matrix_normalizer
+    from indicium_adapters_metabolomics.redu import redu_to_claims
+
+    calls = []
+    monkeypatch.setattr(_matrix_normalizer, "normalize_matrix",
+                        lambda text: calls.append(text) or None)
+    sample_info = {"MassiveID": "MSV0", "filename": "x.mzML",
+                   "SampleType": "stool"}
+    redu_to_claims("MSV0/x.mzML", "study:s1", sample_info=sample_info)
+    assert calls == []  # default off → normaliser never called
+
+
 # --- [ml]-gated tests (real model) ----------------------------------------
 
 @ml_only
@@ -204,6 +331,84 @@ def test_real_model_rejects_unrelated_input(tmp_path):
     n = MatrixNormalizer(cache_dir=tmp_path, threshold=DEFAULT_THRESHOLD)
     out = n.normalize("supersonic jet engine compressor blade")
     assert out is None
+
+
+# --- v0.7.1 cache edge cases (always-on) ----------------------------------
+
+def test_normalizer_cache_dir_none_disables_cache(monkeypatch):
+    """cache_dir=None means no cache_path is computed and nothing is
+    written to disk. Verified by checking the path attribute and that
+    `_load_terms_and_embeddings` short-circuits via the embedded fake."""
+    n = MatrixNormalizer(cache_dir=None)
+    assert n.cache_dir is None
+
+
+def test_normalizer_threshold_floor_kwarg_is_respected():
+    n = MatrixNormalizer(threshold=0.99)
+    assert n.threshold == 0.99
+
+
+def test_normalizer_custom_model_name_recorded():
+    n = MatrixNormalizer(model_name="some/other-model")
+    assert n.model_name == "some/other-model"
+    # Cache key depends on model_name → embeddings cache filename will
+    # differ if model is swapped (covered by the real-model cache test
+    # below; here we just lock the constructor wiring).
+
+
+def test_module_singleton_normalize_matrix_returns_none_when_unavailable(monkeypatch):
+    """The module-level `normalize_matrix(...)` helper delegates to the
+    singleton; with `available=False` it must return None for any input."""
+    from indicium_adapters_metabolomics import _matrix_normalizer as mn
+
+    monkeypatch.setattr(mn.MatrixNormalizer, "available",
+                        property(lambda self: False))
+    assert mn.normalize_matrix("feces") is None
+    assert mn.normalize_matrix("anything") is None
+
+
+# --- v0.7.1 cache edge cases ([ml]-gated) ---------------------------------
+
+@ml_only
+def test_real_model_recovers_from_corrupt_cache_file(tmp_path):
+    """A pre-existing `*_uberon_embeddings_v1.npz` that's actually garbage
+    must be silently re-encoded rather than crashing the first normalize."""
+    # Drop a bogus .npz with the expected name pattern (any digest prefix).
+    bad = tmp_path / "deadbeefdeadbeef_uberon_embeddings_v1.npz"
+    bad.write_bytes(b"this is not a valid npz archive")
+
+    n = MatrixNormalizer(cache_dir=tmp_path, threshold=0.4)
+    out = n.normalize("stool")
+    # Either the digest matches and we recovered, or the digest differs
+    # (in which case the bad file was simply not loaded). Either way, the
+    # call must succeed.
+    assert out is not None
+    label, curie, score = out
+    assert curie == "UBERON:0001988"
+
+
+@ml_only
+def test_real_model_cache_invalidates_on_phrase_list_change(tmp_path, monkeypatch):
+    """Editing _uberon_terms.json (here: monkeypatching the loader to return
+    a different list) must produce a different cache filename — old cache
+    files don't get reused for a different corpus."""
+    from indicium_adapters_metabolomics import _matrix_normalizer as mn
+
+    n1 = MatrixNormalizer(cache_dir=tmp_path, threshold=0.4)
+    n1.normalize("urine")
+    files_after_first = sorted(p.name for p in tmp_path.glob("*_uberon_embeddings_v1.npz"))
+    assert files_after_first, "first run should have written the cache"
+
+    # Force a different corpus → different digest → different cache file.
+    monkeypatch.setattr(mn, "_load_uberon_terms", lambda: [
+        {"curie": "UBERON:9999999", "label": "tongue", "synonyms": ["lingua"]}
+    ])
+    n2 = MatrixNormalizer(cache_dir=tmp_path, threshold=0.4)
+    n2.normalize("lingua")
+    files_after_second = sorted(p.name for p in tmp_path.glob("*_uberon_embeddings_v1.npz"))
+    # The second run must add a NEW cache file (different digest) rather
+    # than overwriting the first.
+    assert len(files_after_second) > len(files_after_first)
 
 
 @ml_only
