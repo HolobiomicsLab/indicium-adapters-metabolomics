@@ -78,12 +78,28 @@ DATA_DIR = Path(__file__).parent
 OUTPUT_PATH = DATA_DIR / "_synonyms_tier2.json"
 CACHE_PATH = DATA_DIR / "_pubchem_synonyms_cache.json"   # gitignored
 
-# Fill this in. Each entry is a name a paper / LLM emits that
-# COMPOUND_INDEX.lookup() currently returns None for. See module docstring.
+# Pre-seeded from the 9 residual misses of audit-2's `domain_probes` after
+# v0.5.0 synonyms landed. Maintainer should extend this list — likely from
+# Perspicacite-AI / Scriptorium claim-extraction runs whose subjects fail
+# COMPOUND_INDEX.lookup(). Each probe-name is something a paper, an LLM, or
+# a tool exports as a compound label that the bundled TSV does not match
+# under any current alias.
 PROBE_NAMES: list[str] = [
-    # "salinosporamide a",
-    # "indolyl-3-propionic acid",
-    # ... seed from /tmp/audit2_adapter.py domain_probes blocks
+    # Audit-2 residual misses (verified missing on 2026-05-24 against the
+    # v0.5.0 index, after tier-1 _synonyms.json applied):
+    "(-)-epicatechin",
+    "acetate",
+    "epicatechin",
+    "equol",
+    "kaempferol 3-O-glucoside",
+    "kaempferol-3-glucoside",
+    "quercetin 3-O-glucoside",
+    "quercetin-3-glucoside",
+    "salinosporamide a",
+    # Add more here. Suggested sources:
+    #   * Recent ASB/Perspicacite-AI metabolomics-paper runs
+    #   * MetaboAtlas common-name lists not in Wikidata
+    #   * HMDB primary-name lists for blood/urine/CSF biomarkers
 ]
 
 
