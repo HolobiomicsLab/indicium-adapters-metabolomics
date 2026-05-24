@@ -19,19 +19,30 @@ from indicium_adapters_metabolomics._registries import (
     is_metabolomics_tool,
 )
 from indicium_adapters_metabolomics.emi import EMIAdapter
+from indicium_adapters_metabolomics.gnps import (
+    gnps_task_to_claims,
+    parse_gnps_annotations,
+    parse_gnps_parameters,
+)
 from indicium_adapters_metabolomics.metabokg import MetaboKGAdapter
 from indicium_adapters_metabolomics.metabolomics import MetabolomicsAdapter
 from indicium_adapters_metabolomics.mztab import parse_mztab_to_claims
+from indicium_adapters_metabolomics.redu import redu_lookup, redu_to_claims
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 __all__ = [
     "EMIAdapter",
     "MetaboKGAdapter",
     "MetabolomicsAdapter",
     "accession_to_curie",
     "canonical_software_name",
+    "gnps_task_to_claims",
     "is_ignored_tool_name",
     "is_metabolomics_database",
     "is_metabolomics_tool",
+    "parse_gnps_annotations",
+    "parse_gnps_parameters",
     "parse_mztab_to_claims",
+    "redu_lookup",
+    "redu_to_claims",
 ]

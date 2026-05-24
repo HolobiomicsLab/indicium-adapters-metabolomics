@@ -1,0 +1,20 @@
+{
+  "_comment": "Synthetic ReDU /filename response shaped after the documented ReDU sample-metadata template. Used to drive tests/test_redu.py without requiring live network. Field names match the ReDU public schema.",
+  "MassiveID": "MSV000082048",
+  "FileName": "f.MSV000082048/ccms_peak/Plate_28/30_84.mzML",
+  "USI": "mzspec:MSV000082048:30_84:scan:1099",
+  "NCBITaxonomy": "9606",
+  "UBERONBodyPartName": "blood plasma",
+  "UBERONOntologyIndex": "UBERON:0001969",
+  "DOIDCommonName": "type 2 diabetes mellitus",
+  "DOIDOntologyIndex": "DOID:9352",
+  "SampleType": "blood",
+  "SampleTypeSub1": "blood_plasma",
+  "MassSpectrometer": "Q-Exactive",
+  "IonizationSourceAndPolarity": "ESI positive",
+  "ChromatographyAndPhase": "C18 reverse-phase",
+  "HealthStatus": "case",
+  "AgeInYears": "47",
+  "BiologicalSex": "female",
+  "Country": "United States of America"
+}

@@ -53,6 +53,19 @@ The roadmap below leans heavily on quadrants 1–3. New PRs should justify thems
 
 See CHANGELOG.md.
 
+## v0.6.0 — RELEASED 2026-05-24 (ReDU + GNPS integrations)
+
+See CHANGELOG.md. Lands ReDU `/filename`, GNPS `result_json.jsp` annotations
+view, and GNPS `ManageParameters` XML as three new submodules
+(`redu`, `gnps`). All claims project into existing adapter qualifier vocab.
+
+Deferred to v0.7.0:
+- GNPS `view_all_clusters_withID_beta` and `view_network_pairs` views
+  (need live probing to confirm column layouts; scoped out of v0.6.0).
+- MiniLM matrix-name fuzzy normaliser — design unchanged, may not be
+  necessary if ReDU's matrix coverage on a real corpus is high enough.
+- PubChem tier-2 synonyms — still user-driven via `data/build_synonyms.py`.
+
 ## v0.5.0 — RELEASED 2026-05-24 (audit-2 follow-up)
 
 See CHANGELOG.md. Closes 5 of 7 actionable audit-2 findings (6a software
