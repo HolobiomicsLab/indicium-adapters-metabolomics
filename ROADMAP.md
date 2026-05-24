@@ -98,17 +98,20 @@ sprint. Both are tracked for v0.6.0:
   / "fecal" / "poo"; "blood" / "plasma" / "serum" / "whole blood"; "leaf" /
   "leaves" / "foliage") where a sentence-transformer (e.g. `all-MiniLM-L6-v2`,
   22 MB) over a curated canonical list outperforms an ever-growing JSON.
-  Decision needed: ship behind a `[ml]` extra so the wheel stays light, or
-  emit a separate `indicium-adapters-metabolomics-matrices` package.
+  **Decision (2026-05-24):** ship behind a `[ml]` extra so the default wheel
+  stays zero-ML; expose `normalize_matrix(name, threshold=0.55)` returning
+  `(canonical, score) | None`. Canonical matrix list to be defined alongside.
 - **Tier-2 compound-synonym expansion via PubChem PUG-REST**. Audit-2 measured
   the synonym layer at 65% (gut metabolomics) / 71% (phenolics) / 76%
   (natural-product drugs). The hand-curated `_synonyms.json` (now 53 entries
-  after v0.5.0) won't scale further. Plan: extend `build_data.py` with a
-  PubChem fetcher that calls `/compound/name/<name>/synonyms/JSON` and
-  `/compound/name/<name>/cids/JSON` for the highest-priority misses, caches
-  to `_synonyms_cache.json` (gitignored), and writes a tier-2 JSON shipped
-  with the wheel. Same offline-at-runtime constraint as the existing RefMet
-  layer.
+  after v0.5.0) won't scale further. **Decision (2026-05-24):** user-driven.
+  Skeleton landed in v0.5.0 at `data/build_synonyms.py` with cache path,
+  throttling (4 rps under PubChem's 5 rps limit), PubChem-CID round-trip via
+  the existing `_by_curie` index, and an empty `PROBE_NAMES` list for the
+  maintainer to populate. Writes `_synonyms_tier2.json` (new file; tier-1
+  hand-curated layer stays human-reviewable). When the first run produces
+  output, add a one-line load in `_enrichment.py::_load()` so the tier-2
+  JSON is folded in.
 
 ## v0.5.0 candidates (carried forward from v0.4.0)
 
