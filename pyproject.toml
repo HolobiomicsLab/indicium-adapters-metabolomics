@@ -39,6 +39,11 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
 
+[tool.coverage.run]
+omit = [
+    "src/indicium_adapters_metabolomics/data/build_data.py",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --strict-markers"
