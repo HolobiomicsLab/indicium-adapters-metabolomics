@@ -1,0 +1,802 @@
+{
+  "actinopodidae": {
+    "label": "Actinopodidae",
+    "qid": "Q5845"
+  },
+  "aequidens": {
+    "label": "Aequidens",
+    "qid": "Q3538"
+  },
+  "agelenidae": {
+    "label": "Agelenidae",
+    "qid": "Q5850"
+  },
+  "aloe cheranganiensis": {
+    "label": "Aloe cheranganiensis",
+    "qid": "Q3634"
+  },
+  "aloe chlorantha": {
+    "label": "Aloe chlorantha",
+    "qid": "Q3652"
+  },
+  "aloe christianii": {
+    "label": "Aloe christianii",
+    "qid": "Q3633"
+  },
+  "aloe chrysostachys": {
+    "label": "Aloe chrysostachys",
+    "qid": "Q3641"
+  },
+  "aloe citrea": {
+    "label": "Aloe citrea",
+    "qid": "Q3654"
+  },
+  "alpine pika": {
+    "label": "Alpine pika",
+    "qid": "Q4524"
+  },
+  "amatitlania": {
+    "label": "Amatitlania",
+    "qid": "Q3545"
+  },
+  "amaurobiidae": {
+    "label": "Amaurobiidae",
+    "qid": "Q5854"
+  },
+  "ammoxenidae": {
+    "label": "Ammoxenidae",
+    "qid": "Q5858"
+  },
+  "amphinectidae": {
+    "label": "Amphinectidae",
+    "qid": "Q5862"
+  },
+  "ananas comosus": {
+    "label": "Ananas comosus",
+    "qid": "Q1493"
+  },
+  "anapidae": {
+    "label": "Anapidae",
+    "qid": "Q5868"
+  },
+  "anatidae": {
+    "label": "Anatidae",
+    "qid": "Q7556"
+  },
+  "anemarrhena asphodeloides": {
+    "label": "Anemarrhena asphodeloides",
+    "qid": "Q4379"
+  },
+  "anguispira": {
+    "label": "Anguispira",
+    "qid": "Q4651"
+  },
+  "antrodiaetidae": {
+    "label": "Antrodiaetidae",
+    "qid": "Q5874"
+  },
+  "anyphaenidae": {
+    "label": "Anyphaenidae",
+    "qid": "Q5876"
+  },
+  "arachnida": {
+    "label": "Arachnida",
+    "qid": "Q1358"
+  },
+  "araneae": {
+    "label": "Araneae",
+    "qid": "Q1357"
+  },
+  "araneidae": {
+    "label": "Araneidae",
+    "qid": "Q5883"
+  },
+  "archaeid\u00e6": {
+    "label": "Archaeid\u00e6",
+    "qid": "Q5892"
+  },
+  "archocentrus": {
+    "label": "Archocentrus",
+    "qid": "Q3565"
+  },
+  "arthropod": {
+    "label": "arthropod",
+    "qid": "Q1360"
+  },
+  "ascoviridae": {
+    "label": "Ascoviridae",
+    "qid": "Q6836"
+  },
+  "astronotinae": {
+    "label": "Astronotinae",
+    "qid": "Q3424"
+  },
+  "astronotus ocellatus": {
+    "label": "Astronotus ocellatus",
+    "qid": "Q3442"
+  },
+  "atypidae": {
+    "label": "Atypidae",
+    "qid": "Q5895"
+  },
+  "australoheros": {
+    "label": "Australoheros",
+    "qid": "Q3558"
+  },
+  "australoheros facetus": {
+    "label": "Australoheros facetus",
+    "qid": "Q3576"
+  },
+  "austrochilidae": {
+    "label": "Austrochilidae",
+    "qid": "Q5896"
+  },
+  "baikal seal": {
+    "label": "Baikal Seal",
+    "qid": "Q4535"
+  },
+  "barychelidae": {
+    "label": "Barychelidae",
+    "qid": "Q8617"
+  },
+  "belgian endive": {
+    "label": "Belgian endive",
+    "qid": "Q1474"
+  },
+  "betta brownorum": {
+    "label": "Betta brownorum",
+    "qid": "Q526"
+  },
+  "betta channoides": {
+    "label": "Betta channoides",
+    "qid": "Q533"
+  },
+  "betta edithae": {
+    "label": "Betta edithae",
+    "qid": "Q518"
+  },
+  "bird": {
+    "label": "bird",
+    "qid": "Q5113"
+  },
+  "blue acara": {
+    "label": "Blue acara",
+    "qid": "Q3583"
+  },
+  "brassica oleracea var. botrytis": {
+    "label": "Brassica oleracea var. botrytis",
+    "qid": "Q7537"
+  },
+  "brassica rapa": {
+    "label": "Brassica rapa",
+    "qid": "Q3384"
+  },
+  "brazilian sandperch": {
+    "label": "Brazilian sandperch",
+    "qid": "Q4870"
+  },
+  "caecilian": {
+    "label": "Caecilian",
+    "qid": "Q4758"
+  },
+  "cafeteria": {
+    "label": "Cafeteria",
+    "qid": "Q267"
+  },
+  "calymma communimacula": {
+    "label": "Calymma communimacula",
+    "qid": "Q3084"
+  },
+  "camelus": {
+    "label": "Camelus",
+    "qid": "Q7375"
+  },
+  "caponiidae": {
+    "label": "Caponiidae",
+    "qid": "Q8626"
+  },
+  "capsicum annuum": {
+    "label": "Capsicum annuum",
+    "qid": "Q1380"
+  },
+  "caudovirales": {
+    "label": "Caudovirales",
+    "qid": "Q6521"
+  },
+  "cetacea": {
+    "label": "Cetacea",
+    "qid": "Q160"
+  },
+  "chaetobranchopsis": {
+    "label": "Chaetobranchopsis",
+    "qid": "Q3453"
+  },
+  "chaetobranchus": {
+    "label": "Chaetobranchus",
+    "qid": "Q3460"
+  },
+  "chelicerata": {
+    "label": "Chelicerata",
+    "qid": "Q1359"
+  },
+  "chicken": {
+    "label": "chicken",
+    "qid": "Q780"
+  },
+  "chummidae": {
+    "label": "Chummidae",
+    "qid": "Q8629"
+  },
+  "cichla": {
+    "label": "Cichla",
+    "qid": "Q3468"
+  },
+  "cichlasoma": {
+    "label": "Cichlasoma",
+    "qid": "Q3600"
+  },
+  "cichlasomatinae": {
+    "label": "Cichlasomatinae",
+    "qid": "Q3536"
+  },
+  "cichlidae": {
+    "label": "Cichlidae",
+    "qid": "Q3406"
+  },
+  "cichlinae": {
+    "label": "Cichlinae",
+    "qid": "Q3474"
+  },
+  "cithaeronidae": {
+    "label": "Cithaeronidae",
+    "qid": "Q8631"
+  },
+  "citrus \u00d7 limon": {
+    "label": "Citrus \u00d7 limon",
+    "qid": "Q500"
+  },
+  "clubionidae": {
+    "label": "Clubionidae",
+    "qid": "Q8634"
+  },
+  "common crane": {
+    "label": "Common Crane",
+    "qid": "Q4764"
+  },
+  "coneweb spider": {
+    "label": "Coneweb spider",
+    "qid": "Q10054"
+  },
+  "convict cichlid": {
+    "label": "Convict Cichlid",
+    "qid": "Q3546"
+  },
+  "corinnidae": {
+    "label": "Corinnidae",
+    "qid": "Q8695"
+  },
+  "cotoneaster": {
+    "label": "Cotoneaster",
+    "qid": "Q5538"
+  },
+  "crenicichla": {
+    "label": "Crenicichla",
+    "qid": "Q3482"
+  },
+  "crenicichla johanna": {
+    "label": "Crenicichla johanna",
+    "qid": "Q3499"
+  },
+  "crenicichla punctata": {
+    "label": "Crenicichla punctata",
+    "qid": "Q3491"
+  },
+  "crenicichla strigata": {
+    "label": "Crenicichla strigata",
+    "qid": "Q3509"
+  },
+  "crenicichla tigrina": {
+    "label": "Crenicichla tigrina",
+    "qid": "Q3516"
+  },
+  "cryptoheros spilurus": {
+    "label": "Cryptoheros spilurus",
+    "qid": "Q3590"
+  },
+  "ctenidae": {
+    "label": "Ctenidae",
+    "qid": "Q8708"
+  },
+  "ctenizidae": {
+    "label": "Ctenizidae",
+    "qid": "Q8713"
+  },
+  "cucurbitaceae": {
+    "label": "Cucurbitaceae",
+    "qid": "Q8314"
+  },
+  "cyatholipidae": {
+    "label": "Cyatholipidae",
+    "qid": "Q8724"
+  },
+  "cybaeidae": {
+    "label": "Cybaeidae",
+    "qid": "Q10028"
+  },
+  "cycloctenidae": {
+    "label": "Cycloctenidae",
+    "qid": "Q10030"
+  },
+  "cyrtaucheniidae": {
+    "label": "Cyrtaucheniidae",
+    "qid": "Q10031"
+  },
+  "cytomegalovirus": {
+    "label": "Cytomegalovirus",
+    "qid": "Q6946"
+  },
+  "decapoda": {
+    "label": "Decapoda",
+    "qid": "Q4610"
+  },
+  "deinopidae": {
+    "label": "Deinopidae",
+    "qid": "Q10033"
+  },
+  "desidae": {
+    "label": "Desidae",
+    "qid": "Q10038"
+  },
+  "desmiphorini": {
+    "label": "Desmiphorini",
+    "qid": "Q2389"
+  },
+  "dicotyledones": {
+    "label": "Dicotyledones",
+    "qid": "Q8316"
+  },
+  "dictynidae": {
+    "label": "Dictynidae",
+    "qid": "Q10049"
+  },
+  "dinosaur": {
+    "label": "dinosaur",
+    "qid": "Q430"
+  },
+  "dipluridae": {
+    "label": "Dipluridae",
+    "qid": "Q10057"
+  },
+  "discus macclintocki": {
+    "label": "Discus macclintocki",
+    "qid": "Q4754"
+  },
+  "drosera": {
+    "label": "Drosera",
+    "qid": "Q266"
+  },
+  "drymusidae": {
+    "label": "Drymusidae",
+    "qid": "Q10060"
+  },
+  "dysderidae": {
+    "label": "Dysderidae",
+    "qid": "Q10063"
+  },
+  "eastern lowland gorilla": {
+    "label": "eastern lowland gorilla",
+    "qid": "Q3072"
+  },
+  "elephant": {
+    "label": "elephant",
+    "qid": "Q7378"
+  },
+  "entoloma": {
+    "label": "Entoloma",
+    "qid": "Q2099"
+  },
+  "epstein\u2013barr virus": {
+    "label": "Epstein\u2013Barr virus",
+    "qid": "Q6900"
+  },
+  "eresidae": {
+    "label": "Eresidae",
+    "qid": "Q10067"
+  },
+  "erythrodiplax media": {
+    "label": "Erythrodiplax media",
+    "qid": "Q3186"
+  },
+  "euctenizidae": {
+    "label": "Euctenizidae",
+    "qid": "Q10532"
+  },
+  "eurasian red squirrel": {
+    "label": "Eurasian Red Squirrel",
+    "qid": "Q4388"
+  },
+  "eurymorion": {
+    "label": "Eurymorion",
+    "qid": "Q293"
+  },
+  "exiliboa placata": {
+    "label": "Exiliboa placata",
+    "qid": "Q606"
+  },
+  "filistatidae": {
+    "label": "Filistatidae",
+    "qid": "Q10534"
+  },
+  "firemouth cichlid": {
+    "label": "firemouth cichlid",
+    "qid": "Q3705"
+  },
+  "formicidae": {
+    "label": "Formicidae",
+    "qid": "Q7386"
+  },
+  "fragaria": {
+    "label": "Fragaria",
+    "qid": "Q745"
+  },
+  "fungi": {
+    "label": "fungi",
+    "qid": "Q764"
+  },
+  "gaala": {
+    "label": "Gaala",
+    "qid": "Q2442"
+  },
+  "gallieniellidae": {
+    "label": "Gallieniellidae",
+    "qid": "Q10540"
+  },
+  "gnaphosidae": {
+    "label": "Gnaphosidae",
+    "qid": "Q10545"
+  },
+  "goat": {
+    "label": "goat",
+    "qid": "Q2934"
+  },
+  "gobiidae": {
+    "label": "Gobiidae",
+    "qid": "Q4468"
+  },
+  "goldeneye cichlid": {
+    "label": "goldeneye cichlid",
+    "qid": "Q3666"
+  },
+  "gradungulidae": {
+    "label": "Gradungulidae",
+    "qid": "Q10549"
+  },
+  "green terror": {
+    "label": "green terror",
+    "qid": "Q3681"
+  },
+  "hahniidae": {
+    "label": "Hahniidae",
+    "qid": "Q10550"
+  },
+  "hamster": {
+    "label": "Hamster",
+    "qid": "Q6573"
+  },
+  "hedgehog": {
+    "label": "hedgehog",
+    "qid": "Q6120"
+  },
+  "hepatitis b virus": {
+    "label": "Hepatitis B virus",
+    "qid": "Q6844"
+  },
+  "herichthys": {
+    "label": "Herichthys",
+    "qid": "Q3690"
+  },
+  "heros": {
+    "label": "Heros",
+    "qid": "Q3698"
+  },
+  "herpesvirales": {
+    "label": "Herpesvirales",
+    "qid": "Q6542"
+  },
+  "hersiliidae": {
+    "label": "Hersiliidae",
+    "qid": "Q10553"
+  },
+  "hexathelidae": {
+    "label": "Hexathelidae",
+    "qid": "Q10558"
+  },
+  "holarchaeidae": {
+    "label": "Holarchaeidae",
+    "qid": "Q10561"
+  },
+  "horse": {
+    "label": "horse",
+    "qid": "Q726"
+  },
+  "human betaherpesvirus 5": {
+    "label": "human betaherpesvirus 5",
+    "qid": "Q6929"
+  },
+  "human herpesvirus 3": {
+    "label": "Human herpesvirus 3",
+    "qid": "Q6868"
+  },
+  "human herpesvirus 6": {
+    "label": "Human herpesvirus 6",
+    "qid": "Q6974"
+  },
+  "hypochilidae": {
+    "label": "Hypochilidae",
+    "qid": "Q10573"
+  },
+  "idiopidae": {
+    "label": "Idiopidae",
+    "qid": "Q10579"
+  },
+  "insect": {
+    "label": "insect",
+    "qid": "Q1390"
+  },
+  "ivanacara": {
+    "label": "Ivanacara",
+    "qid": "Q3716"
+  },
+  "kinorhyncha": {
+    "label": "Kinorhyncha",
+    "qid": "Q5182"
+  },
+  "komodo dragon": {
+    "label": "Komodo dragon",
+    "qid": "Q4504"
+  },
+  "lactarius sphagneti": {
+    "label": "Lactarius sphagneti",
+    "qid": "Q3655"
+  },
+  "laetacara": {
+    "label": "Laetacara",
+    "qid": "Q3347"
+  },
+  "laetacara curviceps": {
+    "label": "Laetacara curviceps",
+    "qid": "Q3767"
+  },
+  "lion": {
+    "label": "lion",
+    "qid": "Q140"
+  },
+  "long-eared hedgehog": {
+    "label": "long-eared hedgehog",
+    "qid": "Q1459"
+  },
+  "mammal": {
+    "label": "mammal",
+    "qid": "Q7377"
+  },
+  "mesonauta": {
+    "label": "Mesonauta",
+    "qid": "Q3650"
+  },
+  "mesonauta festivus": {
+    "label": "Mesonauta festivus",
+    "qid": "Q3635"
+  },
+  "microcebus": {
+    "label": "Microcebus",
+    "qid": "Q4377"
+  },
+  "mosquito": {
+    "label": "mosquito",
+    "qid": "Q7367"
+  },
+  "mullus barbatus": {
+    "label": "Mullus barbatus",
+    "qid": "Q7171"
+  },
+  "mullus surmuletus": {
+    "label": "Mullus surmuletus",
+    "qid": "Q7119"
+  },
+  "myoviruses": {
+    "label": "Myoviruses",
+    "qid": "Q6770"
+  },
+  "nannacara bimaculata": {
+    "label": "Nannacara bimaculata",
+    "qid": "Q3730"
+  },
+  "nematoda": {
+    "label": "Nematoda",
+    "qid": "Q5185"
+  },
+  "nematomorpha": {
+    "label": "Nematomorpha",
+    "qid": "Q5186"
+  },
+  "northern fur seal": {
+    "label": "northern fur seal",
+    "qid": "Q7966"
+  },
+  "onychophora": {
+    "label": "Onychophora",
+    "qid": "Q5191"
+  },
+  "parachromis managuensis": {
+    "label": "Parachromis managuensis",
+    "qid": "Q3743"
+  },
+  "peaceful betta": {
+    "label": "Peaceful betta",
+    "qid": "Q536"
+  },
+  "pedunculata": {
+    "label": "Pedunculata",
+    "qid": "Q3689"
+  },
+  "penguin": {
+    "label": "penguin",
+    "qid": "Q9147"
+  },
+  "philinidae": {
+    "label": "Philinidae",
+    "qid": "Q3199"
+  },
+  "picornavirales": {
+    "label": "Picornavirales",
+    "qid": "Q6553"
+  },
+  "pig": {
+    "label": "pig",
+    "qid": "Q787"
+  },
+  "plant": {
+    "label": "plant",
+    "qid": "Q756"
+  },
+  "podoviruses": {
+    "label": "Podoviruses",
+    "qid": "Q6797"
+  },
+  "priapulida": {
+    "label": "Priapulida",
+    "qid": "Q5184"
+  },
+  "primate": {
+    "label": "primate",
+    "qid": "Q7380"
+  },
+  "protostome": {
+    "label": "protostome",
+    "qid": "Q5171"
+  },
+  "psittacidae": {
+    "label": "Psittacidae",
+    "qid": "Q8327"
+  },
+  "pteromyini": {
+    "label": "Pteromyini",
+    "qid": "Q9490"
+  },
+  "pterophyllum altum": {
+    "label": "Pterophyllum altum",
+    "qid": "Q3541"
+  },
+  "pyrus": {
+    "label": "Pyrus",
+    "qid": "Q434"
+  },
+  "q3607": {
+    "label": "Q3607",
+    "qid": "Q3607"
+  },
+  "q3727": {
+    "label": "Q3727",
+    "qid": "Q3727"
+  },
+  "q5174": {
+    "label": "Q5174",
+    "qid": "Q5174"
+  },
+  "q5176": {
+    "label": "Q5176",
+    "qid": "Q5176"
+  },
+  "q729": {
+    "label": "Q729",
+    "qid": "Q729"
+  },
+  "q7540": {
+    "label": "Q7540",
+    "qid": "Q7540"
+  },
+  "rabbit": {
+    "label": "rabbit",
+    "qid": "Q9394"
+  },
+  "ranidae": {
+    "label": "Ranidae",
+    "qid": "Q6408"
+  },
+  "red fox": {
+    "label": "Red Fox",
+    "qid": "Q8332"
+  },
+  "rhubarb": {
+    "label": "rhubarb",
+    "qid": "Q7535"
+  },
+  "rhynchonelliformea": {
+    "label": "Rhynchonelliformea",
+    "qid": "Q5315"
+  },
+  "rocio octofasciata": {
+    "label": "Rocio octofasciata",
+    "qid": "Q3737"
+  },
+  "shark": {
+    "label": "shark",
+    "qid": "Q7372"
+  },
+  "siamese fighting fish": {
+    "label": "Siamese fighting fish",
+    "qid": "Q549"
+  },
+  "siphovirus": {
+    "label": "siphovirus",
+    "qid": "Q6808"
+  },
+  "sisicus": {
+    "label": "Sisicus",
+    "qid": "Q4868"
+  },
+  "squirrel": {
+    "label": "squirrel",
+    "qid": "Q9482"
+  },
+  "symphysodon": {
+    "label": "Symphysodon",
+    "qid": "Q3613"
+  },
+  "tardigrade": {
+    "label": "tardigrade",
+    "qid": "Q5194"
+  },
+  "teleocichla": {
+    "label": "Teleocichla",
+    "qid": "Q3524"
+  },
+  "teleocichla cinderella": {
+    "label": "Teleocichla cinderella",
+    "qid": "Q3531"
+  },
+  "tymoviridae": {
+    "label": "Tymoviridae",
+    "qid": "Q6729"
+  },
+  "virus": {
+    "label": "virus",
+    "qid": "Q808"
+  },
+  "western european hedgehog": {
+    "label": "Western European hedgehog",
+    "qid": "Q6145"
+  },
+  "wildebeest": {
+    "label": "wildebeest",
+    "qid": "Q7609"
+  },
+  "zeus faber": {
+    "label": "Zeus faber",
+    "qid": "Q7045"
+  },
+  "zucchini": {
+    "label": "zucchini",
+    "qid": "Q7533"
+  }
+}

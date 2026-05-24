@@ -1,0 +1,15 @@
+{
+  "eats": "RO:0002470",
+  "ectoparasite of": "RO:0002632",
+  "endoparasite of": "RO:0002634",
+  "epiphyte of": "RO:0008501",
+  "host of": "RO:0002453",
+  "hyperparasite of": "RO:0002553",
+  "interacts with": "RO:0002434",
+  "kleptoparasite of": "RO:0008503",
+  "mutualistically interacts with": "RO:0002442",
+  "parasite of": "RO:0002444",
+  "pathogen of": "RO:0002556",
+  "pollinates": "RO:0002455",
+  "preys on": "RO:0002439"
+}
