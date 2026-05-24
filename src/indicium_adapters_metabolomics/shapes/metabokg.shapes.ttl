@@ -3,46 +3,56 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
 # Per-qualifier constraints on asb:Claim for MetaboKG-flavored claims.
+# Uses sh:sparql for conditional validation (fires only when qualifier matches).
+# Requires advanced=True and sparql_mode=True in pyshacl.
 
 asb:SpectralMatchShape
     a sh:NodeShape ;
-    sh:targetNode asb:Claim ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "spectral_match" ;
-    ] ;
-    sh:property [
-        sh:path asb:object_ontology_term ;
-        sh:pattern "^(USI|InChIKey|CHEBI):" ;
-        sh:severity sh:Warning ;
+    sh:sparql [
         sh:message "spectral_match claims should reference a USI, InChIKey, or CHEBI CURIE in the object" ;
+        sh:severity sh:Warning ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this ?value
+            WHERE {
+                $this asb:qualifier "spectral_match" .
+                $this asb:object_ontology_term ?value .
+                FILTER (!regex(str(?value), "^(USI|InChIKey|CHEBI):"))
+            }
+        """ ;
     ] .
 
 asb:AnnotationLevelShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "has_annotation_level" ;
-    ] ;
-    sh:property [
-        sh:path asb:object ;
-        sh:in ("level_1" "level_2" "level_3") ;
-        sh:severity sh:Violation ;
+    sh:sparql [
         sh:message "has_annotation_level object must be one of level_1, level_2, level_3" ;
+        sh:severity sh:Violation ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this ?value
+            WHERE {
+                $this asb:qualifier "has_annotation_level" .
+                $this asb:object ?value .
+                FILTER (?value NOT IN ("level_1", "level_2", "level_3"))
+            }
+        """ ;
     ] .
 
 asb:ClassifiedAsShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "classified_as" ;
-    ] ;
-    sh:property [
-        sh:path asb:object_ontology_term ;
-        sh:pattern "^(NPC|ClassyFire):" ;
-        sh:severity sh:Warning ;
+    sh:sparql [
         sh:message "classified_as object_ontology_term should start with NPC: or ClassyFire:" ;
+        sh:severity sh:Warning ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this ?value
+            WHERE {
+                $this asb:qualifier "classified_as" .
+                $this asb:object_ontology_term ?value .
+                FILTER (!regex(str(?value), "^(NPC|ClassyFire):"))
+            }
+        """ ;
     ] .

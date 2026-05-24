@@ -2,44 +2,60 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
+# Per-qualifier constraints on asb:Claim for EMI/METRIN-KG claims.
+# Uses sh:sparql for conditional validation (fires only when qualifier matches).
+# Requires advanced=True and sparql_mode=True in pyshacl.
+
 asb:MediatesInteractionShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "mediates_interaction" ;
-    ] ;
-    sh:or (
-        [ sh:path asb:subject_ontology_term ; sh:pattern "^WD:Q\\d+$" ]
-        [ sh:path asb:object_ontology_term ;  sh:pattern "^WD:Q\\d+$" ]
-    ) ;
-    sh:severity sh:Warning ;
-    sh:message "mediates_interaction claims should reference a Wikidata QID in subject or object" .
+    sh:sparql [
+        sh:message "mediates_interaction claims should reference a Wikidata QID in subject or object" ;
+        sh:severity sh:Warning ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this
+            WHERE {
+                $this asb:qualifier "mediates_interaction" .
+                FILTER NOT EXISTS {
+                    { $this asb:subject_ontology_term ?s . FILTER(regex(str(?s), "^WD:Q[0-9]+$")) }
+                    UNION
+                    { $this asb:object_ontology_term ?o . FILTER(regex(str(?o), "^WD:Q[0-9]+$")) }
+                }
+            }
+        """ ;
+    ] .
 
 asb:FoundInSpeciesShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "found_in_species" ;
-    ] ;
-    sh:property [
-        sh:path asb:object_ontology_term ;
-        sh:pattern "^(WD:Q|NCBITaxon:)" ;
-        sh:severity sh:Warning ;
+    sh:sparql [
         sh:message "found_in_species object_ontology_term should start with WD:Q or NCBITaxon:" ;
+        sh:severity sh:Warning ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this ?value
+            WHERE {
+                $this asb:qualifier "found_in_species" .
+                $this asb:object_ontology_term ?value .
+                FILTER (!regex(str(?value), "^(WD:Q|NCBITaxon:)"))
+            }
+        """ ;
     ] .
 
 asb:AssociatedWithTraitShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:hasValue "associated_with_trait" ;
-    ] ;
-    sh:property [
-        sh:path asb:object_ontology_term ;
-        sh:pattern "^(qudtUnit|PATO|emi):" ;
-        sh:severity sh:Warning ;
+    sh:sparql [
         sh:message "associated_with_trait object_ontology_term should reference a QUDT unit, PATO quality, or emi: trait" ;
+        sh:severity sh:Warning ;
+        sh:select """
+            PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
+            SELECT $this ?value
+            WHERE {
+                $this asb:qualifier "associated_with_trait" .
+                $this asb:object_ontology_term ?value .
+                FILTER (!regex(str(?value), "^(qudtUnit|PATO|emi):"))
+            }
+        """ ;
     ] .
