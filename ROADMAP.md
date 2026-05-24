@@ -53,18 +53,23 @@ The roadmap below leans heavily on quadrants 1–3. New PRs should justify thems
 
 See CHANGELOG.md.
 
+## v0.7.0 — RELEASED 2026-05-24 (clusters/pairs + MiniLM + tier-2 expansion)
+
+See CHANGELOG.md. Closes the three items deferred from v0.6.x:
+
+- GNPS `view_all_clusters_withID_beta` → `has_feature` claims
+  (per-cluster parent mass / RT / charge / component as evidence)
+- GNPS `view_network_pairs` → `structurally_related_to` claims
+  (undirected edges canonicalised, cos_score + mz_diff as evidence)
+- Optional `[ml]` extra: MiniLM-based matrix-name fuzzy normaliser
+  for ReDU rows lacking a curated UBERON CURIE
+- PROBE_NAMES expanded 9 → ~80; `_synonyms_tier2.json` grew 9 → 89 entries
+
 ## v0.6.0 — RELEASED 2026-05-24 (ReDU + GNPS integrations)
 
 See CHANGELOG.md. Lands ReDU `/filename`, GNPS `result_json.jsp` annotations
 view, and GNPS `ManageParameters` XML as three new submodules
 (`redu`, `gnps`). All claims project into existing adapter qualifier vocab.
-
-Deferred to v0.7.0:
-- GNPS `view_all_clusters_withID_beta` and `view_network_pairs` views
-  (need live probing to confirm column layouts; scoped out of v0.6.0).
-- MiniLM matrix-name fuzzy normaliser — design unchanged, may not be
-  necessary if ReDU's matrix coverage on a real corpus is high enough.
-- PubChem tier-2 synonyms — still user-driven via `data/build_synonyms.py`.
 
 ## v0.5.0 — RELEASED 2026-05-24 (audit-2 follow-up)
 

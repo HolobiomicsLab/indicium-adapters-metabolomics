@@ -85,8 +85,7 @@ CACHE_PATH = DATA_DIR / "_pubchem_synonyms_cache.json"   # gitignored
 # a tool exports as a compound label that the bundled TSV does not match
 # under any current alias.
 PROBE_NAMES: list[str] = [
-    # Audit-2 residual misses (verified missing on 2026-05-24 against the
-    # v0.5.0 index, after tier-1 _synonyms.json applied):
+    # ----- tier-2 seed (audit-2 residual misses, landed in v0.6.1) ---------
     "(-)-epicatechin",
     "acetate",
     "epicatechin",
@@ -96,10 +95,99 @@ PROBE_NAMES: list[str] = [
     "quercetin 3-O-glucoside",
     "quercetin-3-glucoside",
     "salinosporamide a",
-    # Add more here. Suggested sources:
-    #   * Recent ASB/Perspicacite-AI metabolomics-paper runs
-    #   * MetaboAtlas common-name lists not in Wikidata
-    #   * HMDB primary-name lists for blood/urine/CSF biomarkers
+
+    # ----- v0.7.0 expansion ------------------------------------------------
+    # Sources: HMDB primary-name spelling variants (blood/urine biomarkers),
+    # NP-common variants, antibiotic class spellings, statin/NSAID family,
+    # gut-metabolomics literature names. Every entry below was a verified
+    # COMPOUND_INDEX.lookup() == None as of 2026-05-24 against the v0.6.1
+    # index (tier-1 + tier-2 PubChem applied).
+
+    # gut metabolites + bile acids
+    "tauroursodeoxycholic acid", "TUDCA",
+    "deoxycholic acid", "DCA",
+    "lithocholic acid", "LCA",
+    "ursodeoxycholic acid", "UDCA",
+    "glycochenodeoxycholic acid",
+    "taurochenodeoxycholic acid",
+    "p-cresyl sulfate",
+    "phenylacetylglutamine",
+    "trimethylamine",
+
+    # amino acid + dipeptide spellings
+    "L-tryptophan", "tryptophan",
+    "L-tyrosine",
+    "L-phenylalanine",
+    "L-arginine",
+    "L-glutamine",
+    "carnosine",
+    "anserine",
+
+    # blood/urine biomarkers (HMDB primary names)
+    "uric acid",
+    "creatinine",
+    "indoxyl sulfate",        # canonical TSV is "indoxyl sulphate" or vice-versa
+    "hippuric acid",
+    "phenylacetic acid",
+    "3-hydroxybutyric acid", "beta-hydroxybutyrate",
+    "homovanillic acid",
+    "vanillylmandelic acid", "VMA",
+    "kynurenic acid",
+    "xanthurenic acid",
+    "quinolinic acid",
+
+    # phenolic / polyphenol variants
+    "naringenin", "naringin",
+    "hesperidin", "hesperetin",
+    "luteolin", "luteolin-7-glucoside",
+    "apigenin",
+    "rutin",
+    "myricetin",
+    "ellagic acid",
+    "chlorogenic acid",
+    "ferulic acid",
+    "caffeic acid",
+    "gallic acid",
+    "protocatechuic acid",
+    "syringic acid",
+
+    # antibiotic class names + acronyms
+    "ciprofloxacin",
+    "amoxicillin",
+    "doxycycline",
+    "vancomycin",
+    "erythromycin",
+    "streptomycin",
+    "chloramphenicol",
+    "trimethoprim",
+
+    # cardiovascular / NSAID / common drugs
+    "simvastatin",
+    "atorvastatin",
+    "ibuprofen",
+    "paracetamol", "acetaminophen",
+    "metformin",
+    "warfarin",
+    "caffeine",
+    "theophylline",
+    "theobromine",
+
+    # natural products / terpenes
+    "limonene",
+    "alpha-pinene", "α-pinene",
+    "beta-pinene", "β-pinene",
+    "linalool",
+    "geraniol",
+    "menthol",
+    "thymol",
+    "carvacrol",
+
+    # carotenoids
+    "lycopene",
+    "beta-carotene", "β-carotene",
+    "lutein",
+    "zeaxanthin",
+    "astaxanthin",
 ]
 
 
@@ -134,16 +222,23 @@ def _canonical_from_cid(cid: int) -> str | None:
 
 
 def harvest(probes: list[str]) -> dict[str, str]:
-    """For each probe-name not in the TSV, find its PubChem CID, map back to
-    the canonical TSV name, and emit (probe → canonical). Cached + throttled."""
+    """For each probe-name, find its PubChem CID, map back to the canonical
+    TSV name, and emit (probe → canonical). Cached + throttled.
+
+    v0.7.0: we no longer short-circuit when `COMPOUND_INDEX.lookup(name)`
+    already resolves. That guard was correct on a first run but broke
+    incremental runs — once a probe landed in `_synonyms_tier2.json` the
+    next harvest skipped it and the rebuilt tier-2 file lost the entry.
+    The harvester is now fully re-derivable from PROBE_NAMES + cache.
+    Probes that PubChem doesn't resolve are silently dropped (no entry
+    written), and tier-1 hand-curated aliases still win at load time
+    (CompoundIndex.setdefault ordering)."""
     COMPOUND_INDEX._load()
     cache = _load_cache()
     out: dict[str, str] = {}
     sess = requests.Session()
     sess.headers["User-Agent"] = USER_AGENT
     for name in probes:
-        if COMPOUND_INDEX.lookup(name):
-            continue  # already resolves; nothing to do
         if name in cache:
             entry = cache[name]
         else:

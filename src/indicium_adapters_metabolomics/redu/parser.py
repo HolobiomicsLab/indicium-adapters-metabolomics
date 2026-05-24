@@ -309,11 +309,36 @@ def _claim(subject: str, qualifier: str, obj: str, *,
     return c
 
 
+def _maybe_enrich_matrix(claim: dict[str, Any], text: str, *,
+                         normalize_matrix: bool) -> None:
+    """v0.7.0: in-place attach a UBERON / PO CURIE + score when MiniLM is on.
+
+    Silent no-op when `normalize_matrix=False` or the [ml] extra is missing.
+    Never raises — a model load failure just leaves the claim unchanged.
+    """
+    if not normalize_matrix or not text:
+        return
+    try:
+        from indicium_adapters_metabolomics._matrix_normalizer import normalize_matrix as _norm
+    except ImportError:  # pragma: no cover - import guard for partial installs
+        return
+    try:
+        match = _norm(text)
+    except Exception:  # pragma: no cover - never break the projection pipeline
+        return
+    if not match:
+        return
+    _label, curie, score = match
+    claim.setdefault("ontology_terms", {})["object"] = curie
+    claim.setdefault("evidence", {})["matrix_match_score"] = round(score, 4)
+
+
 def redu_sample_to_claims(
     sample_info: dict[str, Any],
     subject: str,
     *,
     source_doi: str | None = None,
+    normalize_matrix: bool = False,
 ) -> list[dict[str, Any]]:
     """Project a single ReDU sample-metadata row to a list of claims.
 
@@ -322,6 +347,22 @@ def redu_sample_to_claims(
     transparently against both the GH-TSV row schema (MassiveID, NCBITaxonomy,
     UBERONBodyPartName, …) and the live ReDU /filename JSON schema
     (ATTRIBUTE_NCBITaxonomy, ATTRIBUTE_Curated_BodyPartOntologyName, …).
+
+    Parameters
+    ----------
+    normalize_matrix
+        v0.7.0. When True and the optional ``[ml]`` extra is installed,
+        free-text matrix labels lacking a UBERON CURIE are run through
+        :mod:`indicium_adapters_metabolomics._matrix_normalizer` (MiniLM
+        cosine match against a curated UBERON / PO seed list). On a
+        confident hit (score ≥ threshold), the resolved CURIE is attached
+        to the matrix claim's ``ontology_terms.object`` and the match
+        score lands in ``evidence['matrix_match_score']``. The literal
+        object string is preserved for traceability.
+
+        Default False — preserves deterministic v0.6.x behavior. The
+        flag is silently a no-op when the [ml] extra is missing, so
+        opt-in code paths don't have to guard themselves.
     """
     claims: list[dict[str, Any]] = []
 
@@ -347,14 +388,18 @@ def redu_sample_to_claims(
             claims.append(_claim(subject, "acquired_from_matrix", uberon,
                                  ontology_term=curie, source_doi=source_doi))
         else:
-            claims.append(_claim(subject, "acquired_from_matrix", uberon,
-                                 source_doi=source_doi))
+            claim = _claim(subject, "acquired_from_matrix", uberon,
+                           source_doi=source_doi)
+            _maybe_enrich_matrix(claim, uberon, normalize_matrix=normalize_matrix)
+            claims.append(claim)
     else:
         sample_type = _clean(sample_info.get("SampleTypeSub1")) \
             or _clean(sample_info.get("SampleType"))
         if sample_type:
-            claims.append(_claim(subject, "acquired_from_matrix", sample_type,
-                                 source_doi=source_doi))
+            claim = _claim(subject, "acquired_from_matrix", sample_type,
+                           source_doi=source_doi)
+            _maybe_enrich_matrix(claim, sample_type, normalize_matrix=normalize_matrix)
+            claims.append(claim)
 
     # 3. Disease (DOID)
     disease_name = _clean(sample_info.get("DOIDCommonName")) \
@@ -395,14 +440,19 @@ def redu_to_claims(
     sample_info: dict[str, Any] | None = None,
     session: requests.Session | None = None,
     cache_dir: Path | str | None = DEFAULT_CACHE_DIR,
+    normalize_matrix: bool = False,
 ) -> list[dict[str, Any]]:
     """Fetch ReDU for `filename` and project to claims.
 
     Pass `sample_info=<dict>` to skip the HTTP call (offline tests,
     pre-fetched data). Otherwise `redu_lookup` is called with the same
-    cache_dir / session knobs."""
+    cache_dir / session knobs.
+
+    `normalize_matrix=True` opts into the MiniLM matrix-name fallback
+    (see :func:`redu_sample_to_claims`)."""
     if sample_info is None:
         sample_info = redu_lookup(filename, session=session, cache_dir=cache_dir)
     if not sample_info:
         return []
-    return redu_sample_to_claims(sample_info, study_id, source_doi=source_doi)
+    return redu_sample_to_claims(sample_info, study_id, source_doi=source_doi,
+                                 normalize_matrix=normalize_matrix)
