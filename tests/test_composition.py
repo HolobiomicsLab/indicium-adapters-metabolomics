@@ -33,9 +33,14 @@ def test_qualifiers_are_disjoint_across_adapters():
     m, mk, e = _three_adapters()
     total = len(m.qualifiers) + len(mk.qualifiers) + len(e.qualifiers)
     union = m.qualifiers | mk.qualifiers | e.qualifiers
+    overlaps = (
+        (m.qualifiers & mk.qualifiers)
+        | (m.qualifiers & e.qualifiers)
+        | (mk.qualifiers & e.qualifiers)
+    )
     assert total == len(union), (
         f"Qualifier overlap detected. Per-adapter sum={total}, union size={len(union)}. "
-        f"Overlaps: {(m.qualifiers & mk.qualifiers) | (m.qualifiers & e.qualifiers) | (mk.qualifiers & e.qualifiers)}"
+        f"Overlaps: {overlaps}"
     )
 
 

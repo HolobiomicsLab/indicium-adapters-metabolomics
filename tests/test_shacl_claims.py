@@ -29,7 +29,10 @@ ASB = "https://asb.holobiomics.org/ns/asb#"
 
 
 def _claim_graph(triples: list[tuple[str, str, str]]) -> rdflib.Graph:
-    """Build a tiny graph of asb:Claim assertions from (s,p,o) tuples (all CURIE-strings or literals)."""
+    """Build a tiny graph of asb:Claim assertions from (s,p,o) tuples.
+
+    All strings are CURIE-strings or literals.
+    """
     g = rdflib.Graph()
     g.bind("asb", ASB)
     for s, p, o in triples:
@@ -42,7 +45,10 @@ def _claim_graph(triples: list[tuple[str, str, str]]) -> rdflib.Graph:
         g.add((s_node, p_node, o_node))
     # Type the subject as asb:Claim
     if triples:
-        s0 = rdflib.URIRef(triples[0][0] if triples[0][0].startswith("http") else f"{ASB}{triples[0][0]}")
+        first_subject = triples[0][0]
+        s0 = rdflib.URIRef(
+            first_subject if first_subject.startswith("http") else f"{ASB}{first_subject}"
+        )
         g.add((s0, rdflib.RDF.type, rdflib.URIRef(f"{ASB}Claim")))
     return g
 
