@@ -5,6 +5,13 @@
 # Per-qualifier constraints on asb:Claim for EMI/METRIN-KG claims.
 # Uses sh:sparql for conditional validation (fires only when qualifier matches).
 # Requires advanced=True and sparql_mode=True in pyshacl.
+#
+# These fire on asb:domainQualifier (NOT the closed Bucur asb:qualifier enum):
+# the EMI qualifiers below are open domain terms, so Perspicacité routes them to
+# asb:domainQualifier (indicium#1 / indicium 1.7.0). Keying on asb:qualifier
+# would silently never match emitted claims. (EMI's "interacts_with" is the one
+# qualifier that IS a Bucur term and therefore rides asb:qualifier — no shape
+# keys on it.)
 
 asb:MediatesInteractionShape
     a sh:NodeShape ;
@@ -16,7 +23,7 @@ asb:MediatesInteractionShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this
             WHERE {
-                $this asb:qualifier "mediates_interaction" .
+                $this asb:domainQualifier "mediates_interaction" .
                 FILTER NOT EXISTS {
                     { $this asb:subject_ontology_term ?s . FILTER(regex(str(?s), "^WD:Q[0-9]+$")) }
                     UNION
@@ -36,7 +43,7 @@ asb:FoundInSpeciesShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this ?value
             WHERE {
-                $this asb:qualifier "found_in_species" .
+                $this asb:domainQualifier "found_in_species" .
                 $this asb:object_ontology_term ?value .
                 FILTER (!regex(str(?value), "^(WD:Q|NCBITaxon:)"))
             }
@@ -57,7 +64,7 @@ asb:AssociatedWithTraitShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this ?value
             WHERE {
-                $this asb:qualifier "associated_with_trait" .
+                $this asb:domainQualifier "associated_with_trait" .
                 $this asb:object_ontology_term ?value .
                 FILTER (!regex(str(?value), "^(qudtUnit|PATO|emi):"))
             }

@@ -5,6 +5,11 @@
 # Per-qualifier constraints on asb:Claim for MetaboKG-flavored claims.
 # Uses sh:sparql for conditional validation (fires only when qualifier matches).
 # Requires advanced=True and sparql_mode=True in pyshacl.
+#
+# These fire on asb:domainQualifier (NOT the closed Bucur asb:qualifier enum):
+# all MetaboKG qualifiers are open domain terms, so Perspicacité routes them to
+# asb:domainQualifier (indicium#1 / indicium 1.7.0). Keying on asb:qualifier
+# would silently never match emitted claims.
 
 asb:SpectralMatchShape
     a sh:NodeShape ;
@@ -16,7 +21,7 @@ asb:SpectralMatchShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this ?value
             WHERE {
-                $this asb:qualifier "spectral_match" .
+                $this asb:domainQualifier "spectral_match" .
                 $this asb:object_ontology_term ?value .
                 FILTER (!regex(str(?value), "^(USI|InChIKey|CHEBI):"))
             }
@@ -33,7 +38,7 @@ asb:AnnotationLevelShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this ?value
             WHERE {
-                $this asb:qualifier "has_annotation_level" .
+                $this asb:domainQualifier "has_annotation_level" .
                 $this asb:object ?value .
                 FILTER (?value NOT IN ("level_1", "level_2", "level_3"))
             }
@@ -50,7 +55,7 @@ asb:ClassifiedAsShape
             PREFIX asb: <https://asb.holobiomics.org/ns/asb#>
             SELECT $this ?value
             WHERE {
-                $this asb:qualifier "classified_as" .
+                $this asb:domainQualifier "classified_as" .
                 $this asb:object_ontology_term ?value .
                 FILTER (!regex(str(?value), "^(NPC|ClassyFire):"))
             }

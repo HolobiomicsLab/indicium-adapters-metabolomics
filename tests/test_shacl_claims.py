@@ -62,7 +62,9 @@ def _claim_graph(
         g.add((s0, rdflib.RDF.type, rdflib.URIRef(f"{ASB}Claim")))
         if inject_defaults:
             have_subject = any(p == "subject" for _, p, _ in triples)
-            have_qualifier = any(p == "qualifier" for _, p, _ in triples)
+            have_qualifier = any(
+                p in ("qualifier", "domainQualifier") for _, p, _ in triples
+            )
             if not have_subject:
                 g.add((s0, rdflib.URIRef(f"{ASB}subject"),
                        rdflib.Literal("claim-sample")))
@@ -116,7 +118,8 @@ def test_metabolomics_missing_subject_violates():
 
 
 def test_metabolomics_missing_qualifier_violates():
-    """v0.4.0 ClaimRequiredFieldsShape: a Claim without asb:qualifier violates."""
+    """ClaimRequiredFieldsShape: a Claim carrying NEITHER asb:qualifier nor
+    asb:domainQualifier still violates the either-or qualifier-presence rule."""
     data = _claim_graph(
         [("claim/missing-q", "subject", "glucose")],
         inject_defaults=False,
@@ -127,6 +130,25 @@ def test_metabolomics_missing_qualifier_violates():
     )
     assert conforms is False
     assert "ClaimRequiredFieldsShape" in report or "asb:qualifier" in report
+
+
+def test_metabolomics_domain_qualifier_only_passes_required_fields():
+    """indicium#1: a Claim carrying only asb:domainQualifier (no closed-enum
+    asb:qualifier) must satisfy the required-fields shape. Perspicacité routes
+    domain-adapter qualifiers (e.g. 'identifies') to asb:domainQualifier, so the
+    shape's qualifier-presence check is an either-or over the two slots."""
+    data = _claim_graph(
+        [
+            ("claim/dq", "subject", "glucose"),
+            ("claim/dq", "domainQualifier", "identifies"),
+        ],
+        inject_defaults=False,
+    )
+    shapes = MetabolomicsAdapter().shacl_shapes()
+    conforms, _, _ = pyshacl.validate(
+        data_graph=data, shacl_graph=shapes, inference="none", advanced=False,
+    )
+    assert conforms is True
 
 
 def test_metabolomics_well_formed_claim_passes_required_fields():
@@ -147,7 +169,7 @@ def test_metabolomics_well_formed_claim_passes_required_fields():
 
 def test_metabokg_annotation_level_valid_passes():
     data = _claim_graph([
-        ("claim/3", "qualifier", "has_annotation_level"),
+        ("claim/3", "domainQualifier", "has_annotation_level"),
         ("claim/3", "object", "level_2"),
     ])
     shapes = MetaboKGAdapter().shacl_shapes()
@@ -159,7 +181,7 @@ def test_metabokg_annotation_level_valid_passes():
 
 def test_metabokg_annotation_level_invalid_violates():
     data = _claim_graph([
-        ("claim/4", "qualifier", "has_annotation_level"),
+        ("claim/4", "domainQualifier", "has_annotation_level"),
         ("claim/4", "object", "level_99"),
     ])
     shapes = MetaboKGAdapter().shacl_shapes()
@@ -172,7 +194,7 @@ def test_metabokg_annotation_level_invalid_violates():
 
 def test_emi_mediates_interaction_with_qid_passes():
     data = _claim_graph([
-        ("claim/5", "qualifier", "mediates_interaction"),
+        ("claim/5", "domainQualifier", "mediates_interaction"),
         ("claim/5", "subject_ontology_term", "WD:Q132298"),
         ("claim/5", "object_ontology_term", "WD:Q156495"),
     ])
@@ -186,7 +208,7 @@ def test_emi_mediates_interaction_with_qid_passes():
 def test_metabokg_spectral_match_bad_object_warns():
     """spectral_match with non-USI/InChIKey/CHEBI object should warn."""
     data = _claim_graph([
-        ("claim/6", "qualifier", "spectral_match"),
+        ("claim/6", "domainQualifier", "spectral_match"),
         ("claim/6", "object_ontology_term", "WEIRD:not-a-spectrum"),
     ])
     shapes = MetaboKGAdapter().shacl_shapes()
@@ -202,7 +224,7 @@ def test_metabokg_spectral_match_bad_object_warns():
 def test_metabokg_classified_as_bad_prefix_warns():
     """classified_as with non-NPC/ClassyFire object_ontology_term should warn."""
     data = _claim_graph([
-        ("claim/7", "qualifier", "classified_as"),
+        ("claim/7", "domainQualifier", "classified_as"),
         ("claim/7", "object_ontology_term", "CHEBI:17234"),
     ])
     shapes = MetaboKGAdapter().shacl_shapes()
@@ -217,7 +239,7 @@ def test_metabokg_classified_as_bad_prefix_warns():
 def test_metabokg_classified_as_npc_prefix_passes():
     """classified_as with NPC: prefix should pass."""
     data = _claim_graph([
-        ("claim/8", "qualifier", "classified_as"),
+        ("claim/8", "domainQualifier", "classified_as"),
         ("claim/8", "object_ontology_term", "NPC:0000001"),
     ])
     shapes = MetaboKGAdapter().shacl_shapes()
@@ -231,7 +253,7 @@ def test_metabokg_classified_as_npc_prefix_passes():
 def test_emi_mediates_interaction_without_qid_warns():
     """mediates_interaction with neither subj nor obj as WD:Q should warn."""
     data = _claim_graph([
-        ("claim/9", "qualifier", "mediates_interaction"),
+        ("claim/9", "domainQualifier", "mediates_interaction"),
         ("claim/9", "subject_ontology_term", "CHEBI:17234"),
         ("claim/9", "object_ontology_term", "ENVO:00002005"),
     ])
@@ -247,7 +269,7 @@ def test_emi_mediates_interaction_without_qid_warns():
 def test_emi_found_in_species_with_ncbi_taxon_passes():
     """found_in_species with NCBITaxon: prefix should pass."""
     data = _claim_graph([
-        ("claim/10", "qualifier", "found_in_species"),
+        ("claim/10", "domainQualifier", "found_in_species"),
         ("claim/10", "object_ontology_term", "NCBITaxon:9606"),
     ])
     shapes = EMIAdapter().shacl_shapes()

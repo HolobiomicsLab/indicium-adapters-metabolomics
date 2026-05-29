@@ -29,7 +29,11 @@ All three:
 2. Add to that adapter's `qualifiers` frozenset.
 3. Update `extraction_context()` to mention it.
 4. If it needs enrichment behavior, add a branch in `enrich_claim()`.
-5. If it needs validation, add a NodeShape in the adapter's shapes TTL.
+5. If it needs validation, add a NodeShape in the adapter's shapes TTL. Key any
+   per-qualifier rule on `asb:domainQualifier "<term>"`, NOT `asb:qualifier` —
+   Perspicacité routes domain qualifiers to the open `asb:domainQualifier` slot
+   (indicium#1 / indicium 1.7.0); the closed `asb:qualifier` only carries Bucur
+   SuperPattern terms.
 6. Add unit tests in `tests/test_<adapter>.py`.
 7. `test_composition.py` asserts qualifier sets are disjoint across adapters — keep it that way.
 

@@ -2,11 +2,17 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-# v0.4.0 — base required-fields shape. Every asb:Claim must carry both an
-# asb:subject and an asb:qualifier; severity is sh:Violation. This is the
+# v0.4.0 — base required-fields shape. Every asb:Claim must carry an
+# asb:subject AND at least one qualifier; severity is sh:Violation. This is the
 # adapter family's BASE shape (lives on MetabolomicsAdapter) so when the
 # three adapters are composed via compose_adapters() the constraint appears
 # exactly once in the merged graph.
+#
+# v0.8.0 (indicium#1 / indicium 1.7.0) — qualifier-presence is now an either-or
+# over the closed Bucur asb:qualifier enum and the open asb:domainQualifier slot.
+# Perspicacité routes domain-adapter qualifiers (e.g. 'identifies') to
+# asb:domainQualifier, so requiring asb:qualifier alone would reject every
+# domain-only claim. Mirrors indicium's core QualifierPresenceShape.
 asb:ClaimRequiredFieldsShape
     a sh:NodeShape ;
     sh:targetClass asb:Claim ;
@@ -16,12 +22,11 @@ asb:ClaimRequiredFieldsShape
         sh:severity sh:Violation ;
         sh:message "asb:Claim must have at least one asb:subject" ;
     ] ;
-    sh:property [
-        sh:path asb:qualifier ;
-        sh:minCount 1 ;
-        sh:severity sh:Violation ;
-        sh:message "asb:Claim must have at least one asb:qualifier" ;
-    ] .
+    sh:or (
+        [ sh:path asb:qualifier ; sh:minCount 1 ]
+        [ sh:path asb:domainQualifier ; sh:minCount 1 ]
+    ) ;
+    sh:message "asb:Claim must carry at least one of asb:qualifier (closed Bucur SuperPattern) or asb:domainQualifier (open domain-adapter extension)." .
 
 # v0.4.0 — bumped from sh:Warning to sh:Violation per audit finding #4.
 # CURIE format on subject/object ontology terms is checked only when those
