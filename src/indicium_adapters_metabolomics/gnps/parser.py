@@ -273,6 +273,9 @@ def parse_gnps_parameters(
             v = first(key)
             if v:
                 evidence[key] = v
+        # GNPS/FBMN steps exchange files → loosely coupled (Suter et al. 2025);
+        # this evidence is independently reproducible.
+        evidence["workflow_coupling"] = "loose"
         out.append(_claim(subject, "has_processing_software", label,
                           evidence=evidence,
                           source_doi=source_doi))

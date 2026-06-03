@@ -121,11 +121,12 @@ def test_parameters_tolerances_in_software_evidence():
 
 
 def test_parameters_workflow_only_no_tolerances_means_workflow_only_evidence():
-    """If only workflow is set, evidence has just gnps_workflow (no leak)."""
+    """If only workflow is set, evidence has gnps_workflow + workflow_coupling (no leak)."""
     xml = '<parameters><parameter name="workflow">METABOLOMICS-SNETS-V2</parameter></parameters>'
     claims = parse_gnps_parameters(xml, TASK)
     sw = next(c for c in claims if c["qualifier"] == "has_processing_software")
-    assert sw["evidence"] == {"gnps_workflow": "METABOLOMICS-SNETS-V2"}
+    assert sw["evidence"] == {"gnps_workflow": "METABOLOMICS-SNETS-V2",
+                               "workflow_coupling": "loose"}
 
 
 def test_parameters_ion_mode_lowercased():
@@ -689,6 +690,20 @@ def test_high_level_clusters_view_with_no_data_emits_nothing():
 
 
 # --- Live smoke (gated) ----------------------------------------------------
+
+# --- workflow_coupling reproducibility qualifier (indicium 1.10.0) -----------
+
+def test_gnps_parameters_evidence_carries_loose_coupling():
+    """has_processing_software evidence must carry workflow_coupling='loose'.
+
+    GNPS/FBMN steps exchange files (loosely coupled per Suter et al. 2025),
+    so workflow-derived evidence is independently reproducible.
+    """
+    claims = parse_gnps_parameters(XML, TASK)
+    sw = [c for c in claims if c.get("qualifier") == "has_processing_software"]
+    assert sw, "expected a has_processing_software claim"
+    assert all(c.get("evidence", {}).get("workflow_coupling") == "loose" for c in sw)
+
 
 @pytest.mark.skipif(
     os.environ.get("INDICIUM_LIVE_TESTS") != "1",
