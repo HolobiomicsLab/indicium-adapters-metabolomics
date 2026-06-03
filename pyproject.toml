@@ -49,6 +49,14 @@ Repository = "https://github.com/HolobiomicsLab/indicium-adapters-metabolomics"
 Issues = "https://github.com/HolobiomicsLab/indicium-adapters-metabolomics/issues"
 Changelog = "https://github.com/HolobiomicsLab/indicium-adapters-metabolomics/blob/main/CHANGELOG.md"
 
+# Local-dev resolution for the sibling repos (not published to PyPI at >=1.4).
+# uv-only; stripped from the published wheel. Mirrors indicium-adapters' own
+# [tool.uv.sources]. Without this, `uv sync`/`uv run` re-resolve `indicium>=1.4`
+# from PyPI (an unrelated 0.1.0a3) and fail.
+[tool.uv.sources]
+indicium = { path = "../indicium", editable = true }
+indicium-adapters = { path = "../indicium-adapters", editable = true }
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/indicium_adapters_metabolomics"]
 
