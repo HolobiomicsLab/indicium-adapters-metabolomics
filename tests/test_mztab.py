@@ -45,3 +45,39 @@ def test_claims_dont_mutate_when_called_twice():
 def test_missing_file_raises_filenotfound():
     with pytest.raises(FileNotFoundError):
         parse_mztab_to_claims(Path("/nonexistent/sample.mztab"))
+
+
+# --- ontology_term_justifications (SEMAPV) ------------------------------------
+
+def test_mztab_sml_sets_composite_matching_justification():
+    """SML rows with a CURIE database_identifier must get semapv:CompositeMatching.
+
+    The database_identifier is taken verbatim from the mzTab file — it is
+    a curated identifier provided by the upstream tool, so CompositeMatching
+    is the appropriate SEMAPV term.
+    """
+    claims = parse_mztab_to_claims(FIXTURE)
+    sml_claims = [c for c in claims if c.get("qualifier") == "identifies"]
+    assert sml_claims, "fixture must produce at least one identifies claim"
+    for c in sml_claims:
+        if c.get("ontology_terms", {}).get("object"):
+            j = c.get("ontology_term_justifications", {})
+            assert j.get("object") == "semapv:CompositeMatching", (
+                f"expected semapv:CompositeMatching, got {j.get('object')!r}"
+            )
+
+
+def test_mztab_sml_no_justification_when_no_curie(tmp_path):
+    """SML rows without a CURIE-shaped database_identifier emit no justification."""
+    mztab = tmp_path / "no_curie.mztab"
+    mztab.write_text(
+        "SMH\tSML_ID\tchemical_name\tdatabase_identifier\n"
+        "SML\t1\tMy Compound\tplain-string-no-colon\n",
+        encoding="utf-8",
+    )
+    claims = parse_mztab_to_claims(mztab)
+    sml = [c for c in claims if c.get("qualifier") == "identifies"]
+    assert sml
+    # No CURIE → no ontology_terms["object"] → no justification
+    assert not sml[0].get("ontology_terms", {}).get("object")
+    assert not sml[0].get("ontology_term_justifications", {}).get("object")

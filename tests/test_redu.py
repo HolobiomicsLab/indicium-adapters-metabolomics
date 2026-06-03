@@ -408,3 +408,63 @@ def test_live_redu_returns_dict_or_none():
     out = redu_lookup("MSV000087752/210628_Lund_ColitisInulin_isotopetracing_ExportSpectra.mzML",
                       cache_dir=None)
     assert out is None or isinstance(out, dict)
+
+
+# --- ontology_term_justifications (SEMAPV) ------------------------------------
+
+def test_redu_sets_composite_matching_for_organism_curie():
+    """found_in_organism from NCBITaxonomy field → semapv:CompositeMatching.
+
+    The CURIE is resolved from a curated pipe-delimited ID in the ReDU TSV,
+    not via a string/name lookup, so CompositeMatching is appropriate.
+    """
+    row = _row_for_filename(TSV_FIXTURE, "30_84.mzML")
+    claims = redu_sample_to_claims(row, STUDY)
+    org = [c for c in claims if c["qualifier"] == "found_in_organism"]
+    assert org, "fixture must have at least one found_in_organism claim"
+    for c in org:
+        if c.get("ontology_terms", {}).get("object"):
+            j = c.get("ontology_term_justifications", {})
+            assert j.get("object") == "semapv:CompositeMatching", (
+                f"expected semapv:CompositeMatching, got {j.get('object')!r}"
+            )
+
+
+def test_redu_sets_composite_matching_for_matrix_uberon_curie():
+    """acquired_from_matrix with UBERON ID → semapv:CompositeMatching.
+
+    The UBERON CURIE comes from a curated ontology index column, not from a
+    free-text name match.
+    """
+    claims = redu_sample_to_claims(JSON_FIXTURE, STUDY)
+    m = [c for c in claims if c["qualifier"] == "acquired_from_matrix"
+         and c.get("ontology_terms", {}).get("object")]
+    assert m, "JSON fixture must provide a matrix claim with UBERON CURIE"
+    for c in m:
+        j = c.get("ontology_term_justifications", {})
+        assert j.get("object") == "semapv:CompositeMatching", (
+            f"expected semapv:CompositeMatching, got {j.get('object')!r}"
+        )
+
+
+def test_redu_sets_composite_matching_for_disease_doid_curie():
+    """is_biomarker_for with DOID CURIE → semapv:CompositeMatching."""
+    claims = redu_sample_to_claims(JSON_FIXTURE, STUDY)
+    d = [c for c in claims if c["qualifier"] == "is_biomarker_for"
+         and c.get("ontology_terms", {}).get("object")]
+    assert d, "JSON fixture must have a disease claim with DOID CURIE"
+    for c in d:
+        j = c.get("ontology_term_justifications", {})
+        assert j.get("object") == "semapv:CompositeMatching", (
+            f"expected semapv:CompositeMatching, got {j.get('object')!r}"
+        )
+
+
+def test_redu_no_justification_when_no_ontology_term():
+    """Claims emitted without an ontology_term must not have a justification key."""
+    claims = redu_sample_to_claims(JSON_FIXTURE, STUDY)
+    for c in claims:
+        if not c.get("ontology_terms", {}).get("object"):
+            assert not c.get("ontology_term_justifications", {}).get("object"), (
+                f"justification present without ontology_term in {c}"
+            )

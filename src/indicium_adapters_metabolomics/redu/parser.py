@@ -304,6 +304,10 @@ def _claim(subject: str, qualifier: str, obj: str, *,
     }
     if ontology_term is not None:
         c["ontology_terms"] = {"object": ontology_term}
+        # The CURIE is resolved from a curated lookup column (NCBITaxonomy pipe-
+        # delimited ID, UBERONOntologyIndex, DOIDOntologyIndex) — a curated
+        # identifier resolution, not a free-text name match.
+        c["ontology_term_justifications"] = {"object": "semapv:CompositeMatching"}
     if source_doi is not None:
         c["source_doi"] = source_doi
     return c
@@ -331,6 +335,10 @@ def _maybe_enrich_matrix(claim: dict[str, Any], text: str, *,
     _label, curie, score = match
     claim.setdefault("ontology_terms", {})["object"] = curie
     claim.setdefault("evidence", {})["matrix_match_score"] = round(score, 4)
+    # MiniLM cosine match against a curated seed list — a string/name (lexical) match.
+    claim.setdefault("ontology_term_justifications", {})["object"] = (
+        "semapv:LexicalMatching"
+    )
 
 
 def redu_sample_to_claims(

@@ -62,6 +62,11 @@ def parse_mztab_to_claims(mztab_path: Path | str) -> list[dict]:
         }
         if ":" in db_id:
             claim["ontology_terms"]["object"] = db_id
+            # database_identifier is a curated CURIE taken verbatim from the
+            # mzTab file (produced by an upstream identification tool).
+            claim.setdefault("ontology_term_justifications", {})["object"] = (
+                "semapv:CompositeMatching"
+            )
         claims.append(claim)
 
     # SMF → has_feature claims

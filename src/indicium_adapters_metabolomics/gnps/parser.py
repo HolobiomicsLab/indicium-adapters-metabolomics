@@ -83,6 +83,9 @@ def _claim(subject: str, qualifier: str, obj: str, *,
     }
     if ontology_term is not None:
         c["ontology_terms"] = {"object": ontology_term}
+        # The GNPS USI is constructed by matching the compound name against the
+        # spectral library — a name/string (lexical) match.
+        c["ontology_term_justifications"] = {"object": "semapv:LexicalMatching"}
     if evidence:
         c["evidence"] = evidence
     if source_doi is not None:

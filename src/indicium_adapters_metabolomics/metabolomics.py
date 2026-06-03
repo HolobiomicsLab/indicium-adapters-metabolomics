@@ -114,6 +114,8 @@ class MetabolomicsAdapter:
         claim = dict(claim)
         if "ontology_terms" in claim:
             claim["ontology_terms"] = dict(claim["ontology_terms"])
+        if "ontology_term_justifications" in claim:
+            claim["ontology_term_justifications"] = dict(claim["ontology_term_justifications"])
         if "xrefs" in claim:
             claim["xrefs"] = dict(claim["xrefs"])
         for slot in ("subject", "object"):
@@ -126,6 +128,9 @@ class MetabolomicsAdapter:
             for col in _PRINCIPAL_CURIE_ORDER:
                 if curie := row.get(col):
                     claim.setdefault("ontology_terms", {})[slot] = curie
+                    claim.setdefault("ontology_term_justifications", {})[slot] = (
+                        "semapv:CompositeMatching"
+                    )
                     break
             xrefs = {col: row[col] for col in _XREF_COLUMNS if row.get(col)}
             if xrefs:

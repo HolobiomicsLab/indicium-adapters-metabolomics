@@ -721,3 +721,31 @@ def test_live_gnps_annotations_returns_dict_or_none():
 def test_live_gnps_parameters_returns_str_or_none():
     out = fetch_gnps_parameters(TASK, cache_dir=None)
     assert out is None or isinstance(out, str)
+
+
+# --- ontology_term_justifications (SEMAPV) ------------------------------------
+
+def test_gnps_annotations_sets_lexical_justification_for_usi():
+    """parse_gnps_annotations sets semapv:LexicalMatching on the USI object term.
+
+    The compound name from the GNPS library is matched by string/name to a
+    spectral entry — that is a lexical match.
+    """
+    claims = parse_gnps_annotations(ANNOT["blockData"], TASK)
+    # Only claims that have an ontology_terms.object (i.e. have a SpectrumID)
+    annotated = [c for c in claims if c.get("ontology_terms", {}).get("object")]
+    assert annotated, "fixture must have at least one annotated claim"
+    for c in annotated:
+        j = c.get("ontology_term_justifications", {})
+        assert j.get("object") == "semapv:LexicalMatching", (
+            f"expected semapv:LexicalMatching, got {j.get('object')!r} in {c}"
+        )
+
+
+def test_gnps_annotations_no_justification_when_no_usi():
+    """Claims without a SpectrumID must not get ontology_term_justifications."""
+    rows = [{"Compound_Name": "Test Compound", "#Scan#": "42"}]  # no SpectrumID
+    claims = parse_gnps_annotations(rows, TASK)
+    assert len(claims) == 1
+    assert "ontology_terms" not in claims[0]
+    assert "ontology_term_justifications" not in claims[0]

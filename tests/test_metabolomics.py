@@ -148,3 +148,33 @@ def test_enrich_claim_accepts_wd_curie_subject():
     out = MetabolomicsAdapter().enrich_claim(claim)
     # Principal CURIE order picks CHEBI when present.
     assert out["ontology_terms"]["subject"] == "CHEBI:17234"
+
+
+# --- ontology_term_justifications (SEMAPV) -----------------------------------
+
+def test_enrich_claim_sets_ontology_term_justification_for_subject(base_claim):
+    """enrich_claim must populate ontology_term_justifications for every resolved slot."""
+    out = MetabolomicsAdapter().enrich_claim(base_claim)
+    # base_claim subject="glucose" resolves to CHEBI:17234
+    assert "subject" in out.get("ontology_terms", {})
+    assert out.get("ontology_term_justifications", {}).get("subject") == "semapv:CompositeMatching"
+
+
+def test_enrich_claim_justification_only_for_resolved_slots():
+    """Slots that do NOT resolve must not appear in ontology_term_justifications."""
+    claim = {
+        "subject": "glucose", "qualifier": "identifies", "object": "not-a-compound",
+        "ontology_terms": {}, "evidence_id": "x",
+    }
+    out = MetabolomicsAdapter().enrich_claim(claim)
+    j = out.get("ontology_term_justifications", {})
+    assert "subject" in j          # glucose resolves
+    assert "object" not in j       # not-a-compound does not resolve
+
+
+def test_enrich_claim_justification_does_not_mutate_input(base_claim):
+    snapshot = copy.deepcopy(base_claim)
+    MetabolomicsAdapter().enrich_claim(base_claim)
+    # purity check: the new justifications dict must also be on the output only
+    assert "ontology_term_justifications" not in base_claim
+    assert base_claim == snapshot
