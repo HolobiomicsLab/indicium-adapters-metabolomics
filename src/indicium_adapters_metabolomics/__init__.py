@@ -30,7 +30,7 @@ from indicium_adapters_metabolomics.metabolomics import MetabolomicsAdapter
 from indicium_adapters_metabolomics.mztab import parse_mztab_to_claims
 from indicium_adapters_metabolomics.redu import redu_lookup, redu_to_claims
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 __all__ = [
     "EMIAdapter",
     "MetaboKGAdapter",
