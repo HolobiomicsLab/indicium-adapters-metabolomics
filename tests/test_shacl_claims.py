@@ -25,7 +25,7 @@ from indicium_adapters_metabolomics import (
     MetabolomicsAdapter,
 )
 
-ASB = "https://asb.holobiomics.org/ns/asb#"
+ASB = "https://holobiomicslab.eu/ns/asb#"
 
 
 def _claim_graph(

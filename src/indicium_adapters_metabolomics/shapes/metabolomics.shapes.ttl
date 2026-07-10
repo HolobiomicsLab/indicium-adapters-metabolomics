@@ -1,4 +1,4 @@
-@prefix asb:  <https://asb.holobiomics.org/ns/asb#> .
+@prefix asb:  <https://holobiomicslab.eu/ns/asb#> .
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
