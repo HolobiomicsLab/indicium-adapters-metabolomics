@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 Lockstep release with `indicium-standard` 2.0.0.
 
 ### Changed (breaking)
-- **The SHACL shapes now bind `asb:` to `https://holobiomicslab.eu/ns/asb#`**, following
+- **The SHACL shapes now bind `asb:` to `https://w3id.org/asb#`**, following
   indicium 2.0.0's move off the never-registered `asb.holobiomics.org` domain. The shapes
   shipped in 0.7.0 and earlier target the old IRIs, so they silently match nothing against
   claims produced by indicium 2.0.0.
