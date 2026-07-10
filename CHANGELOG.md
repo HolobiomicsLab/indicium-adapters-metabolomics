@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] — 2026-07-10
+
+Lockstep release with `indicium-standard` 2.0.0.
+
+### Changed (breaking)
+- **The SHACL shapes now bind `asb:` to `https://holobiomicslab.eu/ns/asb#`**, following
+  indicium 2.0.0's move off the never-registered `asb.holobiomics.org` domain. The shapes
+  shipped in 0.7.0 and earlier target the old IRIs, so they silently match nothing against
+  claims produced by indicium 2.0.0.
+- **Depends on `indicium-standard>=2.0.0`** rather than `indicium>=1.7`. The PyPI name
+  `indicium` belongs to an unrelated, abandoned key-value-store package.
+
 ## [0.7.0] — 2026-05-24
 
 Feature release closing three deferred items from the v0.6.1 follow-up queue:

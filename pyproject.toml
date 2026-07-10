@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "indicium-adapters-metabolomics"
-version = "0.7.0"
+version = "0.8.0"
 description = "Metabolomics-domain DomainAdapters for the indicium ecosystem: MetabolomicsAdapter, MetaboKGAdapter, EMIAdapter (ENPKG + METRIN-KG)"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
     "indicium-adapters>=0.5.0",
-    "indicium>=1.7",
+    "indicium-standard>=2.0.0",
     "rdflib>=7.0",
     "pyshacl>=0.25",
     "pyteomics>=4.7",
@@ -51,10 +51,10 @@ Changelog = "https://github.com/HolobiomicsLab/indicium-adapters-metabolomics/bl
 
 # Local-dev resolution for the sibling repos (not published to PyPI at >=1.4).
 # uv-only; stripped from the published wheel. Mirrors indicium-adapters' own
-# [tool.uv.sources]. Without this, `uv sync`/`uv run` re-resolve `indicium>=1.4`
-# from PyPI (an unrelated 0.1.0a3) and fail.
+# [tool.uv.sources]. Without this, `uv sync`/`uv run` would resolve the unrelated
+# PyPI `indicium` package (0.1.0a3) instead of this standard.
 [tool.uv.sources]
-indicium = { path = "../indicium", editable = true }
+indicium-standard = { path = "../indicium", editable = true }
 indicium-adapters = { path = "../indicium-adapters", editable = true }
 
 [tool.hatch.build.targets.wheel]
