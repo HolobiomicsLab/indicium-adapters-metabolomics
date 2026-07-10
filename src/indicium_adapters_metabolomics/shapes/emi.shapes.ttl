@@ -1,4 +1,4 @@
-@prefix asb:  <https://holobiomicslab.eu/ns/asb#> .
+@prefix asb:  <https://w3id.org/asb#> .
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
@@ -20,7 +20,7 @@ asb:MediatesInteractionShape
         sh:message "mediates_interaction claims should reference a Wikidata QID in subject or object" ;
         sh:severity sh:Warning ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this
             WHERE {
                 $this asb:domainQualifier "mediates_interaction" .
@@ -40,7 +40,7 @@ asb:FoundInSpeciesShape
         sh:message "found_in_species object_ontology_term should start with WD:Q or NCBITaxon:" ;
         sh:severity sh:Warning ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this ?value
             WHERE {
                 $this asb:domainQualifier "found_in_species" .
@@ -61,7 +61,7 @@ asb:AssociatedWithTraitShape
         sh:message "associated_with_trait object_ontology_term should reference a QUDT unit, PATO quality, or emi: trait" ;
         sh:severity sh:Warning ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this ?value
             WHERE {
                 $this asb:domainQualifier "associated_with_trait" .

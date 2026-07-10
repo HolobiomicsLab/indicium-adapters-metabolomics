@@ -1,4 +1,4 @@
-@prefix asb:  <https://holobiomicslab.eu/ns/asb#> .
+@prefix asb:  <https://w3id.org/asb#> .
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
@@ -18,7 +18,7 @@ asb:SpectralMatchShape
         sh:message "spectral_match claims should reference a USI, InChIKey, or CHEBI CURIE in the object" ;
         sh:severity sh:Warning ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this ?value
             WHERE {
                 $this asb:domainQualifier "spectral_match" .
@@ -35,7 +35,7 @@ asb:AnnotationLevelShape
         sh:message "has_annotation_level object must be one of level_1, level_2, level_3" ;
         sh:severity sh:Violation ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this ?value
             WHERE {
                 $this asb:domainQualifier "has_annotation_level" .
@@ -52,7 +52,7 @@ asb:ClassifiedAsShape
         sh:message "classified_as object_ontology_term should start with NPC: or ClassyFire:" ;
         sh:severity sh:Warning ;
         sh:select """
-            PREFIX asb: <https://holobiomicslab.eu/ns/asb#>
+            PREFIX asb: <https://w3id.org/asb#>
             SELECT $this ?value
             WHERE {
                 $this asb:domainQualifier "classified_as" .

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pyshacl
 import rdflib
+from indicium import ASB_BASE
 
 from indicium_adapters_metabolomics import (
     EMIAdapter,
@@ -25,7 +26,12 @@ from indicium_adapters_metabolomics import (
     MetabolomicsAdapter,
 )
 
-ASB = "https://holobiomicslab.eu/ns/asb#"
+# Source the term-vocabulary base from the standard itself rather than a
+# hardcoded literal: a hardcode silently goes dead after a base move (the
+# synthetic Claim graphs would then bind a different base than the bundled
+# shapes, so SHACL would match nothing and every malformed Claim would wrongly
+# "conform"). Pinning to indicium.ASB_BASE keeps this fail-closed check honest.
+ASB = ASB_BASE
 
 
 def _claim_graph(
