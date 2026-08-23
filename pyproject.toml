@@ -7,7 +7,7 @@ name = "indicium-adapters-metabolomics"
 version = "0.8.0"
 description = "Metabolomics-domain DomainAdapters for the indicium ecosystem: MetabolomicsAdapter, MetaboKGAdapter, EMIAdapter (ENPKG + METRIN-KG)"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [{name = "Louis-Felix Nothias", email = "louis-felix.nothias@cnrs.fr"}]
 keywords = ["metabolomics", "knowledge-graph", "rdf", "shacl", "indicium", "metabokg", "earth-metabolome", "metrin-kg", "domain-adapter"]

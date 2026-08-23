@@ -119,4 +119,7 @@ def test_compose_from_discover_adapters_works():
     # All three names appear in the joined domain_id (order is discover_adapters' iteration order)
     for name in ("metabolomics", "metabokg", "emi"):
         assert name in composite.domain_id
-    assert composite.domain_id.count("+") == 2
+    # One separator per join, so the count follows what is installed. Hardcoding 2
+    # asserted that this package is alone in the environment, which fails the moment
+    # a sibling adapter is installed alongside it -- the normal state in ASB.
+    assert composite.domain_id.count("+") == len(found) - 1
