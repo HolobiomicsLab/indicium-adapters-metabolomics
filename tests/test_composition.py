@@ -4,12 +4,43 @@ from __future__ import annotations
 import copy
 
 import rdflib
-from indicium_adapters import DomainAdapter, SHACLProvider, compose_adapters
+from indicium_adapters import (
+    DomainAdapter,
+    SHACLProvider,
+    classification_vocabulary,
+    compose_adapters,
+)
 
 from indicium_adapters_metabolomics import (
     EMIAdapter,
     MetaboKGAdapter,
     MetabolomicsAdapter,
+)
+
+# Output of the 2026-08-25 cross-domain vocabulary audit, in the audit's order.
+_AUDIT_SUBDOMAINS: tuple[str, ...] = (
+    "untargeted-metabolomics",
+    "targeted-metabolomics",
+    "lipidomics",
+    "fluxomics",
+    "volatilomics",
+    "clinical-metabolomics",
+    "nutritional-metabolomics",
+    "plant-metabolomics",
+    "microbial-metabolomics",
+    "environmental-metabolomics",
+)
+
+_AUDIT_TECHNIQUES: tuple[str, ...] = (
+    "gas-chromatography-mass-spectrometry",
+    "capillary-electrophoresis-mass-spectrometry",
+    "mass-spectrometry-imaging",
+    "nmr-metabolite-profiling",
+    "metabolite-annotation",
+    "molecular-formula-annotation",
+    "compound-class-annotation",
+    "molecular-networking",
+    "de-novo-structure-elucidation",
 )
 
 
@@ -123,3 +154,19 @@ def test_compose_from_discover_adapters_works():
     # asserted that this package is alone in the environment, which fails the moment
     # a sibling adapter is installed alongside it -- the normal state in ASB.
     assert composite.domain_id.count("+") == len(found) - 1
+
+
+def test_all_three_adapters_declare_one_science():
+    """Sibling adapters share a primary_domain so ASB files one science."""
+    for adapter in _three_adapters():
+        vocab = classification_vocabulary(adapter)
+        assert vocab.primary_domain == "metabolomics", adapter.domain_id
+
+
+def test_declared_vocabulary_union_matches_the_audit():
+    """Concatenating the three adapters reproduces the audit lists exactly."""
+    vocabs = [classification_vocabulary(a) for a in _three_adapters()]
+    subdomains = tuple(t for v in vocabs for t in v.subdomains)
+    techniques = tuple(t for v in vocabs for t in v.techniques)
+    assert subdomains == _AUDIT_SUBDOMAINS
+    assert techniques == _AUDIT_TECHNIQUES

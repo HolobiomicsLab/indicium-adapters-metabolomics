@@ -49,6 +49,18 @@ class EMIAdapter:
     domain_id = "emi"
     api_version = 1
 
+    # Same science as its siblings; ``domain_id`` names the adapter only.
+    primary_domain = "metabolomics"
+
+    # 2026-08-25 cross-domain vocabulary audit: a term two sciences both
+    # declare cannot separate them, so every shared term was dropped.
+    # Ecological subfields; MetabolomicsAdapter holds the rest.
+    subdomains: tuple[str, ...] = (
+        "plant-metabolomics",
+        "microbial-metabolomics",
+        "environmental-metabolomics",
+    )
+
     qualifiers: frozenset[str] = frozenset({
         # ENPKG / analytical
         "annotates_spectrum",

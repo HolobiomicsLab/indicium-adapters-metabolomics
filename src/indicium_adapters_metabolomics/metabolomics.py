@@ -50,6 +50,30 @@ class MetabolomicsAdapter:
     domain_id = "metabolomics"
     api_version = 1
 
+    # ASB classifies on ``primary_domain``; ``domain_id`` names the adapter,
+    # not the science. All three adapters here declare the same science.
+    primary_domain = "metabolomics"
+
+    # 2026-08-25 cross-domain vocabulary audit: a term two sciences both
+    # declare cannot separate them, so every shared term was dropped.
+    subdomains: tuple[str, ...] = (
+        "untargeted-metabolomics",
+        "targeted-metabolomics",
+        "lipidomics",
+        "fluxomics",
+        "volatilomics",
+        "clinical-metabolomics",
+        "nutritional-metabolomics",
+    )
+
+    # Same audit. Acquisition half; annotation techniques live in metabokg.
+    techniques: tuple[str, ...] = (
+        "gas-chromatography-mass-spectrometry",
+        "capillary-electrophoresis-mass-spectrometry",
+        "mass-spectrometry-imaging",
+        "nmr-metabolite-profiling",
+    )
+
     qualifiers: frozenset[str] = frozenset({
         # Per-compound (claim-level) assertions.
         "identifies",

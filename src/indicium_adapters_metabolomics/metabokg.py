@@ -38,6 +38,20 @@ class MetaboKGAdapter:
     domain_id = "metabokg"
     api_version = 1
 
+    # Same science as its siblings; ``domain_id`` names the adapter only.
+    primary_domain = "metabolomics"
+
+    # 2026-08-25 cross-domain vocabulary audit: a term two sciences both
+    # declare cannot separate them, so every shared term was dropped.
+    # Annotation half; subdomains stay on MetabolomicsAdapter and EMIAdapter.
+    techniques: tuple[str, ...] = (
+        "metabolite-annotation",
+        "molecular-formula-annotation",
+        "compound-class-annotation",
+        "molecular-networking",
+        "de-novo-structure-elucidation",
+    )
+
     qualifiers: frozenset[str] = frozenset({
         "spectral_match",
         "has_annotation_level",
