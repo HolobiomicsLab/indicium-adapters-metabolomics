@@ -20,6 +20,8 @@ All notable changes to this project will be documented in this file.
   not been verified.
 - `__version__` reads the installed distribution metadata, and CITATION.cff and
   the SECURITY.md support table name 0.8.0, the version in `pyproject.toml`.
+- CI now tests Python 3.11, the declared floor, as well as 3.12 and 3.13; the
+  classifiers list the same three versions and ruff targets py311.
 
 ## [0.8.0] — 2026-07-10
 

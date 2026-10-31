@@ -47,3 +47,21 @@ def test_security_table_supports_the_current_minor():
         rf"^\|\s*{major}\.{minor}\.x\s*\|\s*yes\s*\|", text, re.MULTILINE
     )
     assert row, f"SECURITY.md does not list {major}.{minor}.x as supported"
+
+
+def test_python_classifiers_equal_the_ci_matrix_and_floor():
+    with (_ROOT / "pyproject.toml").open("rb") as fh:
+        pyproject = tomllib.load(fh)
+    classifiers = {
+        c.rsplit("::", 1)[1].strip()
+        for c in pyproject["project"]["classifiers"]
+        if re.fullmatch(r"Programming Language :: Python :: 3\.\d+", c)
+    }
+    ci = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    matrix_line = re.search(r"python-version:\s*\[([^\]]*)\]", ci)
+    assert matrix_line, "ci.yml has no python-version matrix"
+    matrix = set(re.findall(r"\"(3\.\d+)\"", matrix_line.group(1)))
+    assert classifiers == matrix
+    floor = pyproject["project"]["requires-python"].removeprefix(">=")
+    assert floor == min(matrix, key=lambda v: int(v.split(".")[1]))
+    assert pyproject["tool"]["ruff"]["target-version"] == "py" + floor.replace(".", "")

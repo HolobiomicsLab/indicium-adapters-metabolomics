@@ -83,8 +83,8 @@ ruff check .
 pytest --cov=indicium_adapters_metabolomics
 ```
 
-CI matrix is 3.12 / 3.13. `indicium-adapters>=0.4.0` requires `>=3.12`, so the
-metabolomics package's floor follows it.
+CI matrix is 3.11 / 3.12 / 3.13, the floor `requires-python = ">=3.11"` and
+the Python classifiers; `tests/test_version_identity.py` keeps the three equal.
 
 ## Repo relationships
 
