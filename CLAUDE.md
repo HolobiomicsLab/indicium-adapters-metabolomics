@@ -13,7 +13,7 @@ If the last, skip it.
 
 Three sibling `DomainAdapter` classes in one wheel:
 
-- `MetabolomicsAdapter` (base) — generic MS/NMR claims, RefMet+BridgeDb enrichment
+- `MetabolomicsAdapter` (base) — generic MS/NMR claims, Wikidata+RefMet enrichment
 - `MetaboKGAdapter` — MetaboKG/GNPS analysis claims
 - `EMIAdapter` — ENPKG + METRIN-KG ecological claims
 

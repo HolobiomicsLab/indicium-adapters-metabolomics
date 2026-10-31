@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`DATA_LICENSES.md`**, also shipped in the wheel as
+  `indicium_adapters_metabolomics/data/DATA_LICENSES.md`: source, build date,
+  licence and required attribution of every bundled data file (Plant Ontology
+  CC BY 4.0, the MIT notice of the NPClassifier labels, Wikidata and RO CC0,
+  RefMet under the Metabolomics Workbench terms, UBERON and PubChem).
+
+### Fixed
+- The README, the dev guide, the `MetabolomicsAdapter` docstrings and the 0.1.0
+  entry below described the compound index as RefMet plus BridgeDb data. No
+  bundled file is built from BridgeDb: the index comes from Wikidata, with
+  RefMet names and classes for about 3,200 rows. The README licence line now
+  points at `DATA_LICENSES.md` instead of asserting a RefMet licence that has
+  not been verified.
+- `__version__` reads the installed distribution metadata, and CITATION.cff and
+  the SECURITY.md support table name 0.8.0, the version in `pyproject.toml`.
+
 ## [0.8.0] — 2026-07-10
 
 Lockstep release with `indicium-standard` 2.0.0.
@@ -410,7 +429,7 @@ Closes the three deferred audit findings carried over from v0.3.1.
 
 ### Added
 - Initial release.
-- `MetabolomicsAdapter` (8 qualifiers, 10 prefixes, RefMet+BridgeDb compound enrichment).
+- `MetabolomicsAdapter` (8 qualifiers, 10 prefixes, compound enrichment from the bundled stub table).
 - `MetaboKGAdapter` (7 qualifiers, 8 prefixes, NPC pathway / annotation level / USI enrichment).
 - `EMIAdapter` (13 qualifiers, 15 prefixes, Wikidata QID / plant part / interaction type enrichment).
 - Bundled `refmet_compounds.tsv` (stub of 10 metabolites; expand via `build_data.py` in future releases).

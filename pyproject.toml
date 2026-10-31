@@ -60,6 +60,9 @@ indicium-adapters = { path = "../indicium-adapters", editable = true }
 [tool.hatch.build.targets.wheel]
 packages = ["src/indicium_adapters_metabolomics"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"DATA_LICENSES.md" = "indicium_adapters_metabolomics/data/DATA_LICENSES.md"
+
 
 [tool.ruff]
 line-length = 100
