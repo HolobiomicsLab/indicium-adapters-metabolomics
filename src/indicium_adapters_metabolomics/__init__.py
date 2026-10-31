@@ -11,6 +11,8 @@ or normalise repository accessions before emitting claims.
 """
 from __future__ import annotations
 
+from importlib.metadata import version as _dist_version
+
 from indicium_adapters_metabolomics._registries import (
     accession_to_curie,
     canonical_software_name,
@@ -30,7 +32,7 @@ from indicium_adapters_metabolomics.metabolomics import MetabolomicsAdapter
 from indicium_adapters_metabolomics.mztab import parse_mztab_to_claims
 from indicium_adapters_metabolomics.redu import redu_lookup, redu_to_claims
 
-__version__ = "0.7.0"
+__version__ = _dist_version("indicium-adapters-metabolomics")
 __all__ = [
     "EMIAdapter",
     "MetaboKGAdapter",

@@ -1,7 +1,7 @@
 """MetabolomicsAdapter — domain-agnostic base metabolomics adapter.
 
 Covers general MS/NMR claims, biomarker associations, and compound enrichment
-via the bundled RefMet+BridgeDb compound index. SHACL shapes validate ASB claim
+via the bundled Wikidata+RefMet compound index. SHACL shapes validate ASB claim
 CURIE format only (pipeline RDF validation is upstream's responsibility).
 """
 from __future__ import annotations
@@ -43,7 +43,7 @@ class MetabolomicsAdapter:
     """Base metabolomics DomainAdapter (api_version=1).
 
     Qualifiers cover identification/quantification/biomarker/discrimination/
-    metabolism/co-occurrence claims. Enrichment uses the shared RefMet+BridgeDb
+    metabolism/co-occurrence claims. Enrichment uses the shared Wikidata+RefMet
     compound index.
     """
 
@@ -133,7 +133,7 @@ class MetabolomicsAdapter:
 
     def enrich_claim(self, claim: dict) -> dict:
         """Enrich a claim with CHEBI/HMDB/etc. CURIEs by looking up the subject and
-        object names in the bundled RefMet+BridgeDb compound index. Returns a new
+        object names in the bundled Wikidata+RefMet compound index. Returns a new
         dict; never mutates input."""
         claim = dict(claim)
         if "ontology_terms" in claim:

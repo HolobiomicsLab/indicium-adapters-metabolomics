@@ -4,7 +4,7 @@ Metabolomics-domain DomainAdapters for the [indicium](https://github.com/holobio
 
 Bundles three adapters in one wheel:
 
-- **`MetabolomicsAdapter`** — generic MS/NMR metabolomics claims; CHEBI/HMDB/KEGG/LIPIDMAPS/PubChem/Wikidata enrichment via a bundled RefMet+BridgeDb compound index.
+- **`MetabolomicsAdapter`** — generic MS/NMR metabolomics claims; CHEBI/HMDB/KEGG/LIPIDMAPS/PubChem/Wikidata enrichment via a bundled Wikidata+RefMet compound index.
 - **`MetaboKGAdapter`** — MetaboKG-flavored claims (GNPS spectral matches, NPC chemical classification, MSI annotation levels, FBMN features).
 - **`EMIAdapter`** — Earth Metabolome Initiative (ENPKG) analytical claims AND METRIN-KG ecological/trait claims (biotic interactions, plant traits, body-part qualified observations).
 
@@ -63,4 +63,7 @@ See `CLAUDE.md` for the dev guide.
 
 ## License
 
-See `LICENSE`. Bundled RefMet data: CC-BY (Metabolomics Workbench). Bundled BridgeDb data: CC0.
+Code: MIT, see `LICENSE`. The bundled data files (Wikidata, RefMet, Plant Ontology,
+NPClassifier, Relation Ontology, UBERON and PubChem derivatives) keep their upstream
+licences, listed with the required attributions in `DATA_LICENSES.md`, which also
+ships in the wheel.
