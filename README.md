@@ -18,9 +18,15 @@ Metabolomics Workbench REST API) used by `MetabolomicsAdapter.enrich_claim()`.
 
 ## Install
 
+This package is not published on PyPI; the repository is private for now. Install it from a checkout:
+
 ```bash
-pip install indicium-adapters-metabolomics
+git clone <repository-url>
+cd indicium-adapters-metabolomics
+pip install -e .
 ```
+
+The core package `indicium-adapters` (0.6.0) and its dependency `indicium-standard` are on PyPI and are installed automatically.
 
 ## Usage
 
