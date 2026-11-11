@@ -88,6 +88,7 @@ the Python classifiers; `tests/test_version_identity.py` keeps the three equal.
 
 ## Repo relationships
 
-- Core Protocol lives in `~/git/indicium-adapters` (do not vendor it).
+- Core Protocol lives in the `indicium-adapters` sibling repository (do not vendor it).
 - The previous `MetabolomicsAdapter` was removed from core in `indicium-adapters 0.4.0`.
-- Pipeline RDF validation (MBS:, emi: classes) stays in `~/git/metabokg/shapes/` and `~/git/earth_metabolome_ontology/` — we do not duplicate it here.
+- Pipeline RDF validation (MBS:, emi: classes) stays in the `metabokg` and
+  `earth_metabolome_ontology` sibling repositories - we do not duplicate it here.

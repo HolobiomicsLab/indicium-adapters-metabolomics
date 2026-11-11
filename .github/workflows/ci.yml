@@ -21,14 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Neither is on PyPI yet; both install from their public repositories,
-          # so no token is needed. indicium ships the indicium-standard
-          # distribution that indicium-adapters requires, so it has to come
-          # first or the resolver falls through to PyPI. The pins move to PyPI
-          # once indicium-standard 2.0.0 and indicium-adapters 0.6.0 are published.
-          pip install "indicium-standard @ git+https://github.com/HolobiomicsLab/indicium@500dd828369fd0431154456cb1debfdfcaef779d"
-          pip install "indicium-adapters @ git+https://github.com/HolobiomicsLab/indicium-adapters@9e274c2"
-          pip install -e .[dev]
+          python -m pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
       - name: Run tests
