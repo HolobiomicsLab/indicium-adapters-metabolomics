@@ -2,7 +2,8 @@
 
 DO NOT run at install or import time. Run manually before a release:
 
-    python -m indicium_adapters_metabolomics.data.build_vocabs
+    python -m indicium_adapters_metabolomics.data.build_vocabs \
+        --npc-ttl /path/to/npc_taxonomy.ttl
 
 Produces 4 JSON files in this dir:
   _npc_terms.json       — NPClassifier pathways/classes/superclasses → NPC: CURIEs
@@ -11,23 +12,24 @@ Produces 4 JSON files in this dir:
   _wd_organisms.json    — Top Wikidata species (curated P225 + broad P31 supplement) → {qid, label}
 
 Sources:
-  NPC: parses ~/git/earth_metabolome_ontology/npc_taxonomy.ttl (local repo)
+  NPC: parses the file given by --npc-ttl or INDICIUM_NPC_TTL
   PO/RO: downloads canonical OBO TTL/OWL once, extracts a curated subset
   Wikidata: one-off SPARQL query
 """
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
 import requests
 
 DATA_DIR = Path(__file__).parent
-NPC_TTL_DEFAULT = Path.home() / "git/earth_metabolome_ontology/npc_taxonomy.ttl"
 
 
-def build_npc(ttl_path: Path = NPC_TTL_DEFAULT) -> dict[str, str]:
+def build_npc(ttl_path: Path) -> dict[str, str]:
     """Parse npc_taxonomy.ttl, return {lowercase_label: NPC:xxxx CURIE} map.
 
     The TTL uses SKOS concepts under https://w3id.org/emi/npc# with rdfs:label
@@ -267,12 +269,26 @@ def build_wd_organisms() -> dict[str, dict[str, str]]:
 
 
 def main() -> int:
+    """Regenerate vocabularies from explicit local and remote sources."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--npc-ttl",
+        type=Path,
+        default=os.environ.get("INDICIUM_NPC_TTL"),
+        help="Local npc_taxonomy.ttl path (or set INDICIUM_NPC_TTL).",
+    )
+    args = parser.parse_args()
+
     print("Building NPC vocab ...", file=sys.stderr)
-    try:
-        npc = build_npc()
-    except FileNotFoundError as exc:
-        print(f"  SKIP NPC: {exc}", file=sys.stderr)
+    if args.npc_ttl is None:
+        print("  SKIP NPC: pass --npc-ttl or set INDICIUM_NPC_TTL", file=sys.stderr)
         npc = {}
+    else:
+        try:
+            npc = build_npc(args.npc_ttl)
+        except FileNotFoundError as exc:
+            print(f"  SKIP NPC: {exc}", file=sys.stderr)
+            npc = {}
     if npc:
         (DATA_DIR / "_npc_terms.json").write_text(json.dumps(npc, indent=2, sort_keys=True))
         print(f"  wrote {len(npc)} NPC terms", file=sys.stderr)

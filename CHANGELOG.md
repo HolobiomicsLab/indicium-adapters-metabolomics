@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- 2026-11-11: CI and development installs now use the published dependencies
+  from PyPI.
+
 ### Added
 - **`DATA_LICENSES.md`**, also shipped in the wheel as
   `indicium_adapters_metabolomics/data/DATA_LICENSES.md`: source, build date,
