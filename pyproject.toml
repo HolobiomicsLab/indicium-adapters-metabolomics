@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
-    "indicium-adapters>=0.5.0",
+    "indicium-adapters>=0.6.0",
     "indicium-standard>=2.0.0",
     "rdflib>=7.0",
     "pyshacl>=0.25",
